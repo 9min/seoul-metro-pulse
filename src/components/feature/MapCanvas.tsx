@@ -4,7 +4,7 @@ import { handleStationTap } from "@/canvas/interactions/stationClick";
 import { handleTrainTap } from "@/canvas/interactions/trainClick";
 import { setupZoomPan } from "@/canvas/interactions/zoomPan";
 import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
-import { drawStationLabels } from "@/canvas/objects/StationLabel";
+import { drawStationLabels, updateLabelVisibility } from "@/canvas/objects/StationLabel";
 import { drawAllStations, updateStationAlpha } from "@/canvas/objects/StationNode";
 import { LABEL_FULL_SCALE, LABEL_SHOW_SCALE } from "@/constants/mapConfig";
 import linksData from "@/data/links.json";
@@ -58,6 +58,9 @@ export function MapCanvas() {
 	useEffect(() => {
 		if (scene === null) return;
 
+		// 초기 뷰포트 스케일을 스토어에 동기화
+		useMapStore.getState().setScale(scene.viewport.scale.x);
+
 		drawLinks(scene.linksLayer, LINKS, stationScreenMap);
 		drawAllStations(scene.stationsLayer, STATIONS, stationScreenMap, handleStationTap);
 		drawStationLabels(scene.labelsLayer, STATIONS, stationScreenMap);
@@ -79,8 +82,18 @@ export function MapCanvas() {
 		const tickerCallback = (): void => {
 			animator.update();
 
-			// 시맨틱 줌: 줌 배율에 따라 레이블 alpha 업데이트
-			scene.labelsLayer.alpha = labelAlpha(scene.viewport.scale.x);
+			// 시맨틱 줌: 줌 배율에 따라 레이블 alpha + 충돌 감지
+			const alpha = labelAlpha(scene.viewport.scale.x);
+			scene.labelsLayer.alpha = alpha;
+			if (alpha > 0) {
+				updateLabelVisibility(
+					scene.labelsLayer,
+					scene.viewport.scale.x,
+					scene.viewport.x,
+					scene.viewport.y,
+					useMapStore.getState().activeLines,
+				);
+			}
 
 			// 선택된 열차 카메라 추적
 			const trackedNo = selectedTrainNoRef.current;

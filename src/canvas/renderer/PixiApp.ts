@@ -30,11 +30,13 @@ export async function createPixiApp(canvas: HTMLCanvasElement): Promise<PixiScen
 		resolution: window.devicePixelRatio || 1,
 	});
 
-	// 뷰포트 컨테이너 (줌/팬 대상) — 지도를 화면 중앙에 배치
+	// 뷰포트 컨테이너 (줌/팬 대상) — 지도를 화면에 맞춰 축소 후 중앙 배치
 	const viewport = new Container();
 	viewport.eventMode = "static";
-	viewport.x = Math.round((window.innerWidth - CANVAS_WIDTH) / 2);
-	viewport.y = Math.round((window.innerHeight - CANVAS_HEIGHT) / 2);
+	const fitScale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT) * 0.95;
+	viewport.scale.set(fitScale);
+	viewport.x = Math.round((window.innerWidth - CANVAS_WIDTH * fitScale) / 2);
+	viewport.y = Math.round((window.innerHeight - CANVAS_HEIGHT * fitScale) / 2);
 	app.stage.addChild(viewport);
 
 	const linksLayer = new Container();

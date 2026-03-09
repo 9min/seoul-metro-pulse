@@ -1,6 +1,9 @@
 import { create } from "zustand";
 
-const ALL_LINES_INIT = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+const ALL_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+/** 현재 활성화된 노선 (나머지는 추후 오픈 예정) */
+const ENABLED_LINES = new Set([1]);
 
 interface MapState {
 	scale: number;
@@ -20,12 +23,13 @@ export const useMapStore = create<MapState>((set) => ({
 	offsetX: 0,
 	offsetY: 0,
 	isDragging: false,
-	activeLines: new Set(ALL_LINES_INIT),
+	activeLines: new Set(ENABLED_LINES),
 	setScale: (scale) => set({ scale }),
 	setOffset: (offsetX, offsetY) => set({ offsetX, offsetY }),
 	setIsDragging: (isDragging) => set({ isDragging }),
 	toggleLine: (line) =>
 		set((state) => {
+			if (!ENABLED_LINES.has(line)) return state;
 			const next = new Set(state.activeLines);
 			if (next.has(line)) {
 				next.delete(line);
@@ -34,5 +38,5 @@ export const useMapStore = create<MapState>((set) => ({
 			}
 			return { activeLines: next };
 		}),
-	setAllLinesActive: (active) => set({ activeLines: active ? new Set(ALL_LINES_INIT) : new Set() }),
+	setAllLinesActive: (active) => set({ activeLines: active ? new Set(ENABLED_LINES) : new Set() }),
 }));

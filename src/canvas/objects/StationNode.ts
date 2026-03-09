@@ -37,7 +37,7 @@ function resolveStationAlpha(
 	adjacentIds: Set<string> | null,
 	activeLines: Set<number>,
 ): number {
-	if (!activeLines.has(station.line)) return 0;
+	if (!activeLines.has(station.line)) return 0.2;
 	if (selectedStationId === null) return 1.0;
 	return stationAlpha(station.id, selectedStationId, adjacentIds ?? new Set());
 }

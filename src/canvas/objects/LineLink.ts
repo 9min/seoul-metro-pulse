@@ -55,6 +55,6 @@ export function drawLinks(
 export function updateLinksAlpha(linksLayer: Container, activeLines: Set<number>): void {
 	for (const child of linksLayer.children) {
 		const line = Number(child.label);
-		child.alpha = activeLines.has(line) ? 1 : 0;
+		child.alpha = activeLines.has(line) ? 1 : 0.2;
 	}
 }
