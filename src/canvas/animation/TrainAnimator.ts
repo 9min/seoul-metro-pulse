@@ -1,5 +1,6 @@
 import type { Container, Graphics } from "pixi.js";
 import { TRAIN_ANIMATION_DURATION_MS } from "@/constants/mapConfig";
+import { useMapStore } from "@/stores/useMapStore";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
 import type { AnimatedTrainState, InterpolatedTrain } from "@/types/train";
@@ -124,6 +125,7 @@ export class TrainAnimator {
 
 		const selectedTrainNo = useTrainStore.getState().selectedTrainNo;
 		const selectedStation = useStationStore.getState().selectedStation;
+		const activeLines = useMapStore.getState().activeLines;
 
 		drawAnimatedTrains(
 			this.trainsLayer,
@@ -132,6 +134,7 @@ export class TrainAnimator {
 			selectedTrainNo,
 			selectedStation?.id ?? null,
 			this.onTrainTap ?? ((_no: string) => {}),
+			activeLines,
 		);
 	}
 

@@ -37,13 +37,18 @@ export function createTrainGraphics(line: number): Graphics | null {
 	return gfx;
 }
 
-/** 선택 상태에 따른 열차 alpha 값을 반환한다 (역 선택 > 열차 선택 > 기본) */
+const ALL_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+/** 선택 상태 및 노선 필터에 따른 열차 alpha 값을 반환한다 (비활성 노선 > 역 선택 > 열차 선택 > 기본) */
 function computeTrainAlpha(
 	trainNo: string,
 	toStationId: string,
 	selectedTrainNo: string | null,
 	selectedStationId: string | null,
+	line: number,
+	activeLines: Set<number>,
 ): number {
+	if (!activeLines.has(line)) return 0;
 	if (selectedStationId !== null) return toStationId === selectedStationId ? 1.0 : 0.15;
 	if (selectedTrainNo !== null) return trainNo === selectedTrainNo ? 1.0 : 0.15;
 	return 1.0;
@@ -71,7 +76,7 @@ function registerTrain(
 /**
  * 애니메이션 상태 배열로부터 열차 입자를 렌더링한다.
  * Graphics 풀링: trainNo → Graphics 맵으로 안정적인 열차 identity를 보장한다.
- * 역/열차 선택 시 나머지 열차의 alpha를 0.15로 dimming한다.
+ * 역/열차 선택 및 노선 필터에 따라 alpha를 조정한다.
  */
 export function drawAnimatedTrains(
 	trainsLayer: Container,
@@ -80,6 +85,7 @@ export function drawAnimatedTrains(
 	selectedTrainNo: string | null,
 	selectedStationId: string | null,
 	onTrainTap: (trainNo: string) => void,
+	activeLines: Set<number> = ALL_LINES,
 ): void {
 	for (const train of animatedTrains) {
 		const gfx = pool.get(train.trainNo) ?? registerTrain(trainsLayer, pool, train, onTrainTap);
@@ -92,6 +98,8 @@ export function drawAnimatedTrains(
 			train.toStationId,
 			selectedTrainNo,
 			selectedStationId,
+			train.line,
+			activeLines,
 		);
 	}
 }
