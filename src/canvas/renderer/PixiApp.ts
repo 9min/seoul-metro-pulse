@@ -1,5 +1,11 @@
 import { Application, Container } from "pixi.js";
-import { CANVAS_HEIGHT, CANVAS_PADDING, CANVAS_WIDTH, MAP_BOUNDS } from "@/constants/mapConfig";
+import {
+	CANVAS_HEIGHT,
+	CANVAS_PADDING,
+	CANVAS_WIDTH,
+	INTRO_ZOOM_START,
+	MAP_BOUNDS,
+} from "@/constants/mapConfig";
 
 export interface PixiScene {
 	app: Application;
@@ -34,8 +40,8 @@ export async function createPixiApp(canvas: HTMLCanvasElement): Promise<PixiScen
 	const viewport = new Container();
 	viewport.eventMode = "static";
 
-	// 초기 줌 배율 (레이블이 보이기 시작하는 정도)
-	const initScale = 0.78;
+	// 초기 줌 배율 (전체 노선 조감 → 애니메이션으로 확대)
+	const initScale = INTRO_ZOOM_START;
 	viewport.scale.set(initScale);
 
 	// 용산역 GPS(126.964, 37.53)를 월드 좌표로 변환하여 화면 중앙에 배치

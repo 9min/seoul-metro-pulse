@@ -88,8 +88,13 @@ function parseNameLength(tag: string): number {
 	return name.length || 3;
 }
 
+/** 이전 프레임의 레이블 visible 상태를 기억하여 히스테리시스를 적용한다 */
+const prevVisible = new Map<string, boolean>();
+
 /**
  * 화면 공간 그리드 기반 충돌 감지로 겹치는 레이블을 숨긴다.
+ * 히스테리시스: 이전 프레임에서 visible이었던 레이블이 그리드를 선점하여
+ * 셀 경계 근처에서의 불안정한 토글(깜빡임)을 방지한다.
  * 매 프레임 ticker에서 호출하며, labelsLayer.alpha > 0일 때만 실행한다.
  */
 export function updateLabelVisibility(
@@ -102,6 +107,10 @@ export function updateLabelVisibility(
 	const occupied = new Set<string>();
 	const invScale = 1 / scale;
 
+	// 레이블을 이전 visible 여부로 분류
+	const prevVisibleChildren: typeof labelsLayer.children = [];
+	const prevHiddenChildren: typeof labelsLayer.children = [];
+
 	for (const child of labelsLayer.children) {
 		const tag = child.label ?? "";
 
@@ -110,6 +119,7 @@ export function updateLabelVisibility(
 			const line = parseLine(tag);
 			if (line !== -1 && !activeLines.has(line)) {
 				child.visible = false;
+				prevVisible.set(tag, false);
 				continue;
 			}
 		}
@@ -122,10 +132,24 @@ export function updateLabelVisibility(
 
 		if (isOffScreen(sx, sy)) {
 			child.visible = false;
+			prevVisible.set(tag, false);
 			continue;
 		}
 
-		// 스크린 공간 기준 레이블 너비 계산 (역 스케일링으로 항상 동일)
+		// 이전 프레임에서 visible이었던 레이블 우선 처리
+		if (prevVisible.get(tag) === true) {
+			prevVisibleChildren.push(child);
+		} else {
+			prevHiddenChildren.push(child);
+		}
+	}
+
+	// 1차 패스: 이전에 visible이었던 레이블 → 그리드 선점
+	for (const child of prevVisibleChildren) {
+		const tag = child.label ?? "";
+		const sx = child.x * scale + viewportX;
+		const sy = child.y * scale + viewportY;
+
 		const labelW = parseNameLength(tag) * CHAR_WIDTH;
 		const colStart = Math.floor((sx - labelW / 2) / GRID_CELL_W);
 		const colEnd = Math.floor((sx + labelW / 2) / GRID_CELL_W);
@@ -133,8 +157,31 @@ export function updateLabelVisibility(
 
 		if (hasGridCollision(occupied, colStart, colEnd, row)) {
 			child.visible = false;
+			prevVisible.set(tag, false);
 		} else {
 			child.visible = true;
+			prevVisible.set(tag, true);
+			markOccupied(occupied, colStart, colEnd, row);
+		}
+	}
+
+	// 2차 패스: 이전에 hidden이었던 레이블 → 남은 그리드에 배치 시도
+	for (const child of prevHiddenChildren) {
+		const tag = child.label ?? "";
+		const sx = child.x * scale + viewportX;
+		const sy = child.y * scale + viewportY;
+
+		const labelW = parseNameLength(tag) * CHAR_WIDTH;
+		const colStart = Math.floor((sx - labelW / 2) / GRID_CELL_W);
+		const colEnd = Math.floor((sx + labelW / 2) / GRID_CELL_W);
+		const row = Math.floor(sy / GRID_CELL_H);
+
+		if (hasGridCollision(occupied, colStart, colEnd, row)) {
+			child.visible = false;
+			prevVisible.set(tag, false);
+		} else {
+			child.visible = true;
+			prevVisible.set(tag, true);
 			markOccupied(occupied, colStart, colEnd, row);
 		}
 	}

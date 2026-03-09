@@ -6,7 +6,15 @@ import { setupZoomPan } from "@/canvas/interactions/zoomPan";
 import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
 import { drawStationLabels, updateLabelVisibility } from "@/canvas/objects/StationLabel";
 import { drawAllStations, updateStationAlpha } from "@/canvas/objects/StationNode";
-import { LABEL_FULL_SCALE, LABEL_SHOW_SCALE, SIMULATION_TICK_MS } from "@/constants/mapConfig";
+import {
+	INTRO_ZOOM_DURATION_MS,
+	INTRO_ZOOM_END,
+	INTRO_ZOOM_START,
+	LABEL_FULL_SCALE,
+	LABEL_SHOW_SCALE,
+	SIMULATION_TICK_MS,
+} from "@/constants/mapConfig";
+import { easeInOutCubic } from "@/utils/easing";
 import linksData from "@/data/links.json";
 import stationsData from "@/data/stations.json";
 import { useCoordTransform } from "@/hooks/useCoordTransform";
@@ -67,6 +75,21 @@ export function MapCanvas() {
 		// 초기 뷰포트 스케일을 스토어에 동기화
 		useMapStore.getState().setScale(scene.viewport.scale.x);
 
+		// 초기 줌 인트로 애니메이션 상태
+		const introState = {
+			startTime: performance.now(),
+			startX: scene.viewport.x,
+			startY: scene.viewport.y,
+			done: false,
+		};
+		// 최종 위치 계산 (화면 중앙 기준, 동일 월드 좌표를 INTRO_ZOOM_END 스케일로 표시)
+		const centerWorldX = (window.innerWidth / 2 - introState.startX) / INTRO_ZOOM_START;
+		const centerWorldY = (window.innerHeight / 2 - introState.startY) / INTRO_ZOOM_START;
+		introState.startX = scene.viewport.x;
+		introState.startY = scene.viewport.y;
+		const endX = window.innerWidth / 2 - centerWorldX * INTRO_ZOOM_END;
+		const endY = window.innerHeight / 2 - centerWorldY * INTRO_ZOOM_END;
+
 		drawLinks(scene.linksLayer, LINKS, stationScreenMap);
 		drawAllStations(scene.stationsLayer, STATIONS, stationScreenMap, handleStationTap);
 		drawStationLabels(scene.labelsLayer, STATIONS, stationScreenMap);
@@ -86,6 +109,19 @@ export function MapCanvas() {
 		}
 
 		const tickerCallback = (): void => {
+			// 초기 줌 인트로 애니메이션
+			if (!introState.done) {
+				const elapsed = performance.now() - introState.startTime;
+				const t = Math.min(elapsed / INTRO_ZOOM_DURATION_MS, 1);
+				const eased = easeInOutCubic(t);
+				const currentScale = INTRO_ZOOM_START + (INTRO_ZOOM_END - INTRO_ZOOM_START) * eased;
+				scene.viewport.scale.set(currentScale);
+				scene.viewport.x = introState.startX + (endX - introState.startX) * eased;
+				scene.viewport.y = introState.startY + (endY - introState.startY) * eased;
+				useMapStore.getState().setScale(currentScale);
+				if (t >= 1) introState.done = true;
+			}
+
 			animator.update();
 
 			// 시맨틱 줌: 줌 배율에 따라 레이블 alpha + 충돌 감지
