@@ -1,4 +1,5 @@
 import { HUD } from "@/components/feature/HUD";
+import { LineFilter } from "@/components/feature/LineFilter";
 import { MapCanvas } from "@/components/feature/MapCanvas";
 import { StationPanel } from "@/components/feature/StationPanel";
 import { TrainPanel } from "@/components/feature/TrainPanel";
@@ -14,6 +15,7 @@ export function App() {
 			panel={
 				<>
 					<HUD />
+					<LineFilter />
 					<StationPanel />
 					<TrainPanel />
 				</>

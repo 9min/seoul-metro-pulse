@@ -3,8 +3,8 @@ import { TrainAnimator } from "@/canvas/animation/TrainAnimator";
 import { handleStationTap } from "@/canvas/interactions/stationClick";
 import { handleTrainTap } from "@/canvas/interactions/trainClick";
 import { setupZoomPan } from "@/canvas/interactions/zoomPan";
-import { drawLinks } from "@/canvas/objects/LineLink";
-import { drawStationLabels } from "@/canvas/objects/StationLabel";
+import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
+import { drawStationLabels, updateLabelVisibility } from "@/canvas/objects/StationLabel";
 import { drawAllStations, updateStationAlpha } from "@/canvas/objects/StationNode";
 import { LABEL_FULL_SCALE, LABEL_SHOW_SCALE } from "@/constants/mapConfig";
 import linksData from "@/data/links.json";
@@ -12,6 +12,7 @@ import stationsData from "@/data/stations.json";
 import { useCoordTransform } from "@/hooks/useCoordTransform";
 import { usePixiApp } from "@/hooks/usePixiApp";
 import { useTrainPolling } from "@/hooks/useTrainPolling";
+import { useMapStore } from "@/stores/useMapStore";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
 import type { Station, StationLink } from "@/types/station";
@@ -39,6 +40,7 @@ export function MapCanvas() {
 	const interpolatedTrains = useTrainStore((state) => state.interpolatedTrains);
 	const selectedStation = useStationStore((state) => state.selectedStation);
 	const selectedTrainNo = useTrainStore((state) => state.selectedTrainNo);
+	const activeLines = useMapStore((state) => state.activeLines);
 
 	const adjacencyMap = useMemo(() => buildAdjacencyMap(LINKS), []);
 	const animatorRef = useRef<TrainAnimator | null>(null);
@@ -55,6 +57,9 @@ export function MapCanvas() {
 	// scene이 준비되면 노선/역/레이블 렌더링 + 줌팬 설정 + ticker 등록
 	useEffect(() => {
 		if (scene === null) return;
+
+		// 초기 뷰포트 스케일을 스토어에 동기화
+		useMapStore.getState().setScale(scene.viewport.scale.x);
 
 		drawLinks(scene.linksLayer, LINKS, stationScreenMap);
 		drawAllStations(scene.stationsLayer, STATIONS, stationScreenMap, handleStationTap);
@@ -77,8 +82,18 @@ export function MapCanvas() {
 		const tickerCallback = (): void => {
 			animator.update();
 
-			// 시맨틱 줌: 줌 배율에 따라 레이블 alpha 업데이트
-			scene.labelsLayer.alpha = labelAlpha(scene.viewport.scale.x);
+			// 시맨틱 줌: 줌 배율에 따라 레이블 alpha + 충돌 감지
+			const alpha = labelAlpha(scene.viewport.scale.x);
+			scene.labelsLayer.alpha = alpha;
+			if (alpha > 0) {
+				updateLabelVisibility(
+					scene.labelsLayer,
+					scene.viewport.scale.x,
+					scene.viewport.x,
+					scene.viewport.y,
+					useMapStore.getState().activeLines,
+				);
+			}
 
 			// 선택된 열차 카메라 추적
 			const trackedNo = selectedTrainNoRef.current;
@@ -113,13 +128,14 @@ export function MapCanvas() {
 		animatorRef.current.setTargets(interpolatedTrains);
 	}, [interpolatedTrains]);
 
-	// 역 선택 변경 시 linksLayer 딤 + stationAlpha 업데이트
+	// 역 선택 또는 노선 필터 변경 시 linksLayer 딤 + 노선 alpha + stationAlpha 업데이트
 	useEffect(() => {
 		if (scene === null) return;
 		const active = selectedStation !== null;
 		scene.linksLayer.alpha = active ? 0.2 : 1.0;
-		updateStationAlpha(scene.stationsLayer, STATIONS, selectedStation?.id ?? null);
-	}, [scene, selectedStation]);
+		updateLinksAlpha(scene.linksLayer, activeLines);
+		updateStationAlpha(scene.stationsLayer, STATIONS, selectedStation?.id ?? null, activeLines);
+	}, [scene, selectedStation, activeLines]);
 
 	return <div ref={containerRef} className="h-full w-full" />;
 }

@@ -8,27 +8,27 @@ export const MAP_BOUNDS: MapBounds = {
 	maxLat: 37.96,
 };
 
-/** 기본 캔버스 크기 */
-export const CANVAS_WIDTH = 1200;
-export const CANVAS_HEIGHT = 800;
+/** 기본 캔버스 크기 (가상 월드 좌표계) */
+export const CANVAS_WIDTH = 3000;
+export const CANVAS_HEIGHT = 2000;
 
 /** 캔버스 여백 (px) */
-export const CANVAS_PADDING = 60;
+export const CANVAS_PADDING = 100;
 
 /** 줌 범위 및 속도 */
-export const ZOOM_MIN = 0.3;
+export const ZOOM_MIN = 0.15;
 export const ZOOM_MAX = 6;
 export const ZOOM_SPEED = 0.001;
 
 /** 역 원 반지름 (px) */
-export const STATION_RADIUS = 6;
-export const STATION_RADIUS_HOVER = 9;
+export const STATION_RADIUS = 4;
+export const STATION_RADIUS_HOVER = 7;
 
 /** 노선 두께 (px) */
-export const LINE_WIDTH = 3;
+export const LINE_WIDTH = 2.6;
 
 /** 열차 입자 반지름 (px) */
-export const TRAIN_PARTICLE_RADIUS = 4;
+export const TRAIN_PARTICLE_RADIUS = 3;
 
 /** API 폴링 주기 (ms) — 90초 (하루 ~960건, 1000건 한도 내) */
 export const POLLING_INTERVAL_MS = 90_000;
@@ -40,7 +40,7 @@ export const TRAIN_ANIMATION_DURATION_MS = POLLING_INTERVAL_MS;
 export const TRAIN_FADEIN_MS = 500;
 
 /** 시맨틱 줌: 역 이름 레이블 표시 시작 임계 줌 배율 */
-export const LABEL_SHOW_SCALE = 1.2;
+export const LABEL_SHOW_SCALE = 0.7;
 
 /** 시맨틱 줌: 역 이름 레이블 완전 표시 줌 배율 */
-export const LABEL_FULL_SCALE = 2.0;
+export const LABEL_FULL_SCALE = 1.2;

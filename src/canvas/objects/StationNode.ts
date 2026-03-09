@@ -28,30 +28,39 @@ function stationAlpha(
 	return 0.15;
 }
 
+const ALL_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+/** 노선 필터 + 역 선택 상태를 조합하여 단일 역의 alpha를 반환한다 */
+function resolveStationAlpha(
+	station: Station,
+	selectedStationId: string | null,
+	adjacentIds: Set<string> | null,
+	activeLines: Set<number>,
+): number {
+	if (!activeLines.has(station.line)) return 0.2;
+	if (selectedStationId === null) return 1.0;
+	return stationAlpha(station.id, selectedStationId, adjacentIds ?? new Set());
+}
+
 /**
  * 선택된 역 기준으로 역 Graphics의 alpha를 업데이트한다.
- * 선택 없음: 전체 1.0 / 선택 있음: 선택 역 1.0, 인접 역 0.6, 나머지 0.15
+ * activeLines에 없는 호선의 역은 숨긴다.
+ * 선택 없음: 활성 노선 1.0, 비활성 0 / 선택 있음: 선택 역 1.0, 인접 역 0.6, 나머지 0.15
  */
 export function updateStationAlpha(
 	stationsLayer: Container,
 	stations: Station[],
 	selectedStationId: string | null,
+	activeLines: Set<number> = ALL_LINES,
 ): void {
-	if (selectedStationId === null) {
-		for (const child of stationsLayer.children) {
-			child.alpha = 1.0;
-		}
-		return;
-	}
-
-	const adjacentIds = buildAdjacentIds(selectedStationId);
+	const adjacentIds = selectedStationId !== null ? buildAdjacentIds(selectedStationId) : null;
 
 	for (let i = 0; i < stations.length; i++) {
 		const station = stations[i];
 		if (station === undefined) continue;
 		const child = stationsLayer.children[i];
 		if (child === undefined) continue;
-		child.alpha = stationAlpha(station.id, selectedStationId, adjacentIds);
+		child.alpha = resolveStationAlpha(station, selectedStationId, adjacentIds, activeLines);
 	}
 }
 
