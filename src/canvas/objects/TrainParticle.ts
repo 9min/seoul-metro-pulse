@@ -37,6 +37,37 @@ export function createTrainGraphics(line: number): Graphics | null {
 	return gfx;
 }
 
+/** 선택 상태에 따른 열차 alpha 값을 반환한다 (역 선택 > 열차 선택 > 기본) */
+function computeTrainAlpha(
+	trainNo: string,
+	toStationId: string,
+	selectedTrainNo: string | null,
+	selectedStationId: string | null,
+): number {
+	if (selectedStationId !== null) return toStationId === selectedStationId ? 1.0 : 0.15;
+	if (selectedTrainNo !== null) return trainNo === selectedTrainNo ? 1.0 : 0.15;
+	return 1.0;
+}
+
+/** 신규 열차 Graphics를 초기화하고 풀/레이어에 등록한다 */
+function registerTrain(
+	trainsLayer: Container,
+	pool: Map<string, Graphics>,
+	train: AnimatedTrainState,
+	onTrainTap: (trainNo: string) => void,
+): Graphics | null {
+	const created = createTrainGraphics(train.line);
+	if (created === null) return null;
+	created.label = train.trainNo;
+	created.eventMode = "static";
+	created.cursor = "pointer";
+	const trainNo = train.trainNo;
+	created.on("pointertap", () => onTrainTap(trainNo));
+	pool.set(train.trainNo, created);
+	trainsLayer.addChild(created);
+	return created;
+}
+
 /**
  * 애니메이션 상태 배열로부터 열차 입자를 렌더링한다.
  * Graphics 풀링: trainNo → Graphics 맵으로 안정적인 열차 identity를 보장한다.
@@ -51,32 +82,16 @@ export function drawAnimatedTrains(
 	onTrainTap: (trainNo: string) => void,
 ): void {
 	for (const train of animatedTrains) {
-		let gfx = pool.get(train.trainNo);
-
-		if (gfx === undefined) {
-			// 신규 열차: Graphics 생성 + 풀 등록 + 클릭 이벤트 연결
-			const created = createTrainGraphics(train.line);
-			if (created === null) continue;
-			gfx = created;
-			gfx.label = train.trainNo;
-			gfx.eventMode = "static";
-			gfx.cursor = "pointer";
-			const trainNo = train.trainNo;
-			gfx.on("pointertap", () => onTrainTap(trainNo));
-			pool.set(train.trainNo, gfx);
-			trainsLayer.addChild(gfx);
-		}
+		const gfx = pool.get(train.trainNo) ?? registerTrain(trainsLayer, pool, train, onTrainTap);
+		if (gfx === null) continue;
 
 		gfx.x = train.currentX;
 		gfx.y = train.currentY;
-
-		// alpha 계산: 역 선택 > 열차 선택 > 기본
-		if (selectedStationId !== null) {
-			gfx.alpha = train.toStationId === selectedStationId ? 1.0 : 0.15;
-		} else if (selectedTrainNo !== null) {
-			gfx.alpha = train.trainNo === selectedTrainNo ? 1.0 : 0.15;
-		} else {
-			gfx.alpha = 1.0;
-		}
+		gfx.alpha = computeTrainAlpha(
+			train.trainNo,
+			train.toStationId,
+			selectedTrainNo,
+			selectedStationId,
+		);
 	}
 }

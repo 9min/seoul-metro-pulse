@@ -1,4 +1,4 @@
-import { type Container, Graphics } from "pixi.js";
+import type { Container, Graphics } from "pixi.js";
 import { TRAIN_ANIMATION_DURATION_MS } from "@/constants/mapConfig";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";

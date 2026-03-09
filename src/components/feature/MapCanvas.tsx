@@ -64,10 +64,8 @@ export function MapCanvas() {
 			if (trackedNo !== null) {
 				const state = animator.getTrainState(trackedNo);
 				if (state !== undefined) {
-					scene.viewport.x =
-						window.innerWidth / 2 - state.currentX * scene.viewport.scale.x;
-					scene.viewport.y =
-						window.innerHeight / 2 - state.currentY * scene.viewport.scale.y;
+					scene.viewport.x = window.innerWidth / 2 - state.currentX * scene.viewport.scale.x;
+					scene.viewport.y = window.innerHeight / 2 - state.currentY * scene.viewport.scale.y;
 				}
 			}
 		};
