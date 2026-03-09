@@ -154,4 +154,14 @@ export class TrainAnimator {
 	get count(): number {
 		return this.states.size;
 	}
+
+	/** 현재 애니메이션 상태 배열을 반환한다 */
+	getTrainList(): AnimatedTrainState[] {
+		return Array.from(this.states.values());
+	}
+
+	/** Graphics 풀 크기를 반환한다 */
+	get poolSize(): number {
+		return this.graphicsPool.size;
+	}
 }

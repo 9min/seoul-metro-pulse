@@ -17,12 +17,14 @@ interface MapState {
 	offsetY: number;
 	isDragging: boolean;
 	activeLines: Set<number>;
+	heatmapEnabled: boolean;
 	setScale: (scale: number) => void;
 	setOffset: (x: number, y: number) => void;
 	setIsDragging: (isDragging: boolean) => void;
 	toggleLine: (line: number, enabledLines: Set<number>) => void;
 	setAllLinesActive: (active: boolean, enabledLines: Set<number>) => void;
 	syncLinesForMode: (mode: AppMode) => void;
+	toggleHeatmap: () => void;
 }
 
 export const useMapStore = create<MapState>((set) => ({
@@ -31,6 +33,7 @@ export const useMapStore = create<MapState>((set) => ({
 	offsetY: 0,
 	isDragging: false,
 	activeLines: new Set(ALL_LINES),
+	heatmapEnabled: false,
 	setScale: (scale) => set({ scale }),
 	setOffset: (offsetX, offsetY) => set({ offsetX, offsetY }),
 	setIsDragging: (isDragging) => set({ isDragging }),
@@ -48,4 +51,5 @@ export const useMapStore = create<MapState>((set) => ({
 	setAllLinesActive: (active, enabledLines) =>
 		set({ activeLines: active ? new Set(enabledLines) : new Set() }),
 	syncLinesForMode: (mode) => set({ activeLines: new Set(getEnabledLines(mode)) }),
+	toggleHeatmap: () => set((state) => ({ heatmapEnabled: !state.heatmapEnabled })),
 }));

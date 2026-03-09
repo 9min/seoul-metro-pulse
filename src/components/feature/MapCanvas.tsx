@@ -1,19 +1,34 @@
 import { useEffect, useMemo, useRef } from "react";
+import { Graphics } from "pixi.js";
 import { TrainAnimator } from "@/canvas/animation/TrainAnimator";
 import { handleStationTap } from "@/canvas/interactions/stationClick";
 import { handleTrainTap } from "@/canvas/interactions/trainClick";
 import { setupZoomPan } from "@/canvas/interactions/zoomPan";
+import {
+	computeLinkCongestion,
+	drawCongestionHeatmap,
+} from "@/canvas/objects/CongestionHeatmap";
 import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
 import { drawStationLabels, updateLabelVisibility } from "@/canvas/objects/StationLabel";
 import { drawAllStations, updateStationAlpha } from "@/canvas/objects/StationNode";
 import {
+	drawTrails,
+	pruneTrails,
+	type TrailQueue,
+	updateTrailQueues,
+} from "@/canvas/objects/TrainTrail";
+import {
+	CONGESTION_UPDATE_FRAMES,
 	INTRO_ZOOM_DURATION_MS,
 	INTRO_ZOOM_END,
 	INTRO_ZOOM_START,
 	LABEL_FULL_SCALE,
 	LABEL_SHOW_SCALE,
 	SIMULATION_TICK_MS,
+	TRAIL_FRAME_SKIP,
+	TRAIL_MAX_POINTS,
 } from "@/constants/mapConfig";
+import { maybeUpdatePerfStore } from "@/stores/usePerfStore";
 import { easeInOutCubic } from "@/utils/easing";
 import linksData from "@/data/links.json";
 import stationsData from "@/data/stations.json";
@@ -56,6 +71,8 @@ export function MapCanvas() {
 	const adjacencyMap = useMemo(() => buildAdjacencyMap(LINKS), []);
 	const animatorRef = useRef<TrainAnimator | null>(null);
 	const selectedTrainNoRef = useRef<string | null>(null);
+	const trailMapRef = useRef<Map<string, TrailQueue>>(new Map());
+	const frameCountRef = useRef(0);
 
 	// 역/링크 데이터를 스토어에 등록
 	useEffect(() => {
@@ -108,7 +125,19 @@ export function MapCanvas() {
 			animator.setTargets(existingTrains);
 		}
 
+		// 모션 트레일용 Graphics (단일 인스턴스 재사용)
+		const trailGfx = new Graphics();
+		scene.trailLayer.addChild(trailGfx);
+
+		// 혼잡도 히트맵용 Graphics (단일 인스턴스 재사용)
+		const heatmapGfx = new Graphics();
+		scene.heatmapLayer.addChild(heatmapGfx);
+
 		const tickerCallback = (): void => {
+			const renderStart = performance.now();
+			frameCountRef.current += 1;
+			const frameCount = frameCountRef.current;
+
 			// 초기 줌 인트로 애니메이션
 			if (!introState.done) {
 				const elapsed = performance.now() - introState.startTime;
@@ -124,6 +153,22 @@ export function MapCanvas() {
 
 			animator.update();
 
+			// 모션 트레일
+			const trainList = animator.getTrainList();
+			updateTrailQueues(trailMapRef.current, trainList, frameCount, TRAIL_FRAME_SKIP, TRAIL_MAX_POINTS);
+			const activeTrainNos = new Set(trainList.map((t) => t.trainNo));
+			pruneTrails(trailMapRef.current, activeTrainNos);
+			const currentActiveLines = useMapStore.getState().activeLines;
+			drawTrails(scene.trailLayer, trailGfx, trailMapRef.current, currentActiveLines);
+
+			// 혼잡도 히트맵 (조건부, 30프레임마다)
+			const isHeatmapOn = useMapStore.getState().heatmapEnabled;
+			scene.heatmapLayer.visible = isHeatmapOn;
+			if (isHeatmapOn && frameCount % CONGESTION_UPDATE_FRAMES === 0) {
+				const congestion = computeLinkCongestion(LINKS, trainList);
+				drawCongestionHeatmap(heatmapGfx, LINKS, stationScreenMap, congestion);
+			}
+
 			// 시맨틱 줌: 줌 배율에 따라 레이블 alpha + 충돌 감지
 			const alpha = labelAlpha(scene.viewport.scale.x);
 			scene.labelsLayer.alpha = alpha;
@@ -133,7 +178,7 @@ export function MapCanvas() {
 					scene.viewport.scale.x,
 					scene.viewport.x,
 					scene.viewport.y,
-					useMapStore.getState().activeLines,
+					currentActiveLines,
 				);
 			}
 
@@ -146,6 +191,10 @@ export function MapCanvas() {
 					scene.viewport.y = window.innerHeight / 2 - state.currentY * scene.viewport.scale.y;
 				}
 			}
+
+			// 성능 측정 (250ms throttle)
+			const renderTime = performance.now() - renderStart;
+			maybeUpdatePerfStore(scene.app.ticker.FPS, renderTime, animator.count, animator.poolSize);
 		};
 		scene.app.ticker.add(tickerCallback);
 

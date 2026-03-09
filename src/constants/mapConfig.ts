@@ -75,3 +75,24 @@ export const INTRO_ZOOM_END = 1.5;
 
 /** 초기 줌 애니메이션: 지속 시간 (ms) */
 export const INTRO_ZOOM_DURATION_MS = 3_000;
+
+/** 모션 트레일: 최대 포인트 수 */
+export const TRAIL_MAX_POINTS = 20;
+
+/** 모션 트레일: 몇 프레임마다 포인트를 추가할지 */
+export const TRAIL_FRAME_SKIP = 2;
+
+/** 모션 트레일: 선 최대 alpha */
+export const TRAIL_MAX_ALPHA = 0.6;
+
+/** 모션 트레일: 선 최대 두께 (px) */
+export const TRAIL_MAX_WIDTH = 3.5;
+
+/** 혼잡도 히트맵: 몇 프레임마다 갱신할지 */
+export const CONGESTION_UPDATE_FRAMES = 30;
+
+/** 혼잡도 히트맵: 선 두께 배수 */
+export const CONGESTION_LINE_WIDTH_FACTOR = 2.5;
+
+/** 성능 모니터: 업데이트 주기 (ms) */
+export const PERF_UPDATE_INTERVAL_MS = 250;
