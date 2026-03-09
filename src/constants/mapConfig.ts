@@ -55,8 +55,44 @@ export const SIMULATION_TRAINS_PER_LINE: Record<number, number> = {
 	9: 20,
 };
 
+/** 열차 캡슐 반길이 (이동 방향 축, px) */
+export const TRAIN_CAPSULE_LENGTH = 6;
+
+/** 열차 캡슐 반폭 (수직 축, px) */
+export const TRAIN_CAPSULE_WIDTH = 2.4;
+
 /** 시맨틱 줌: 역 이름 레이블 표시 시작 임계 줌 배율 */
 export const LABEL_SHOW_SCALE = 0.7;
 
 /** 시맨틱 줌: 역 이름 레이블 완전 표시 줌 배율 */
 export const LABEL_FULL_SCALE = 1.2;
+
+/** 초기 줌 애니메이션: 시작 배율 (전체 노선 조감) */
+export const INTRO_ZOOM_START = 0.4;
+
+/** 초기 줌 애니메이션: 최종 배율 (열차 상세 관찰) */
+export const INTRO_ZOOM_END = 1.5;
+
+/** 초기 줌 애니메이션: 지속 시간 (ms) */
+export const INTRO_ZOOM_DURATION_MS = 3_000;
+
+/** 모션 트레일: 최대 포인트 수 */
+export const TRAIL_MAX_POINTS = 20;
+
+/** 모션 트레일: 몇 프레임마다 포인트를 추가할지 */
+export const TRAIL_FRAME_SKIP = 2;
+
+/** 모션 트레일: 선 최대 alpha */
+export const TRAIL_MAX_ALPHA = 0.6;
+
+/** 모션 트레일: 선 최대 두께 (px) */
+export const TRAIL_MAX_WIDTH = 3.5;
+
+/** 혼잡도 히트맵: 몇 프레임마다 갱신할지 */
+export const CONGESTION_UPDATE_FRAMES = 30;
+
+/** 혼잡도 히트맵: 선 두께 배수 */
+export const CONGESTION_LINE_WIDTH_FACTOR = 2.5;
+
+/** 성능 모니터: 업데이트 주기 (ms) */
+export const PERF_UPDATE_INTERVAL_MS = 250;

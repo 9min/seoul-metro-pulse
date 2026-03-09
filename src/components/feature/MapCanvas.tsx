@@ -1,12 +1,30 @@
+import { Graphics } from "pixi.js";
 import { useEffect, useMemo, useRef } from "react";
 import { TrainAnimator } from "@/canvas/animation/TrainAnimator";
 import { handleStationTap } from "@/canvas/interactions/stationClick";
 import { handleTrainTap } from "@/canvas/interactions/trainClick";
 import { setupZoomPan } from "@/canvas/interactions/zoomPan";
+import { computeLinkCongestion, drawCongestionHeatmap } from "@/canvas/objects/CongestionHeatmap";
 import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
 import { drawStationLabels, updateLabelVisibility } from "@/canvas/objects/StationLabel";
 import { drawAllStations, updateStationAlpha } from "@/canvas/objects/StationNode";
-import { LABEL_FULL_SCALE, LABEL_SHOW_SCALE, SIMULATION_TICK_MS } from "@/constants/mapConfig";
+import {
+	drawTrails,
+	pruneTrails,
+	type TrailQueue,
+	updateTrailQueues,
+} from "@/canvas/objects/TrainTrail";
+import {
+	CONGESTION_UPDATE_FRAMES,
+	INTRO_ZOOM_DURATION_MS,
+	INTRO_ZOOM_END,
+	INTRO_ZOOM_START,
+	LABEL_FULL_SCALE,
+	LABEL_SHOW_SCALE,
+	SIMULATION_TICK_MS,
+	TRAIL_FRAME_SKIP,
+	TRAIL_MAX_POINTS,
+} from "@/constants/mapConfig";
 import linksData from "@/data/links.json";
 import stationsData from "@/data/stations.json";
 import { useCoordTransform } from "@/hooks/useCoordTransform";
@@ -14,10 +32,12 @@ import { usePixiApp } from "@/hooks/usePixiApp";
 import { useSimulationPolling } from "@/hooks/useSimulationPolling";
 import { useTrainPolling } from "@/hooks/useTrainPolling";
 import { useMapStore } from "@/stores/useMapStore";
+import { maybeUpdatePerfStore } from "@/stores/usePerfStore";
 import { useSimulationStore } from "@/stores/useSimulationStore";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
 import type { Station, StationLink } from "@/types/station";
+import { easeInOutCubic } from "@/utils/easing";
 import { buildAdjacencyMap } from "@/utils/stationNameResolver";
 
 const STATIONS = stationsData as Station[];
@@ -28,6 +48,38 @@ function labelAlpha(scale: number): number {
 	if (scale < LABEL_SHOW_SCALE) return 0;
 	if (scale >= LABEL_FULL_SCALE) return 1;
 	return (scale - LABEL_SHOW_SCALE) / (LABEL_FULL_SCALE - LABEL_SHOW_SCALE);
+}
+
+/** 인트로 줌 애니메이션을 진행한다 */
+function tickIntroZoom(
+	introState: { startTime: number; startX: number; startY: number; done: boolean },
+	viewport: { scale: { set: (s: number) => void }; x: number; y: number },
+	endX: number,
+	endY: number,
+): void {
+	if (introState.done) return;
+	const elapsed = performance.now() - introState.startTime;
+	const t = Math.min(elapsed / INTRO_ZOOM_DURATION_MS, 1);
+	const eased = easeInOutCubic(t);
+	const currentScale = INTRO_ZOOM_START + (INTRO_ZOOM_END - INTRO_ZOOM_START) * eased;
+	viewport.scale.set(currentScale);
+	viewport.x = introState.startX + (endX - introState.startX) * eased;
+	viewport.y = introState.startY + (endY - introState.startY) * eased;
+	useMapStore.getState().setScale(currentScale);
+	if (t >= 1) introState.done = true;
+}
+
+/** 선택된 열차를 화면 중앙에 추적한다 */
+function tickCameraTracking(
+	trackedNo: string | null,
+	animator: TrainAnimator,
+	viewport: { scale: { x: number; y: number }; x: number; y: number },
+): void {
+	if (trackedNo === null) return;
+	const state = animator.getTrainState(trackedNo);
+	if (state === undefined) return;
+	viewport.x = window.innerWidth / 2 - state.currentX * viewport.scale.x;
+	viewport.y = window.innerHeight / 2 - state.currentY * viewport.scale.y;
 }
 
 /**
@@ -48,6 +100,8 @@ export function MapCanvas() {
 	const adjacencyMap = useMemo(() => buildAdjacencyMap(LINKS), []);
 	const animatorRef = useRef<TrainAnimator | null>(null);
 	const selectedTrainNoRef = useRef<string | null>(null);
+	const trailMapRef = useRef<Map<string, TrailQueue>>(new Map());
+	const frameCountRef = useRef(0);
 
 	// 역/링크 데이터를 스토어에 등록
 	useEffect(() => {
@@ -67,6 +121,21 @@ export function MapCanvas() {
 		// 초기 뷰포트 스케일을 스토어에 동기화
 		useMapStore.getState().setScale(scene.viewport.scale.x);
 
+		// 초기 줌 인트로 애니메이션 상태
+		const introState = {
+			startTime: performance.now(),
+			startX: scene.viewport.x,
+			startY: scene.viewport.y,
+			done: false,
+		};
+		// 최종 위치 계산 (화면 중앙 기준, 동일 월드 좌표를 INTRO_ZOOM_END 스케일로 표시)
+		const centerWorldX = (window.innerWidth / 2 - introState.startX) / INTRO_ZOOM_START;
+		const centerWorldY = (window.innerHeight / 2 - introState.startY) / INTRO_ZOOM_START;
+		introState.startX = scene.viewport.x;
+		introState.startY = scene.viewport.y;
+		const endX = window.innerWidth / 2 - centerWorldX * INTRO_ZOOM_END;
+		const endY = window.innerHeight / 2 - centerWorldY * INTRO_ZOOM_END;
+
 		drawLinks(scene.linksLayer, LINKS, stationScreenMap);
 		drawAllStations(scene.stationsLayer, STATIONS, stationScreenMap, handleStationTap);
 		drawStationLabels(scene.labelsLayer, STATIONS, stationScreenMap);
@@ -85,8 +154,42 @@ export function MapCanvas() {
 			animator.setTargets(existingTrains);
 		}
 
+		// 모션 트레일용 Graphics (단일 인스턴스 재사용)
+		const trailGfx = new Graphics();
+		scene.trailLayer.addChild(trailGfx);
+
+		// 혼잡도 히트맵용 Graphics (단일 인스턴스 재사용)
+		const heatmapGfx = new Graphics();
+		scene.heatmapLayer.addChild(heatmapGfx);
+
 		const tickerCallback = (): void => {
+			const renderStart = performance.now();
+			frameCountRef.current += 1;
+			const frameCount = frameCountRef.current;
+
+			tickIntroZoom(introState, scene.viewport, endX, endY);
 			animator.update();
+
+			// 모션 트레일
+			const trainList = animator.getTrainList();
+			updateTrailQueues(
+				trailMapRef.current,
+				trainList,
+				frameCount,
+				TRAIL_FRAME_SKIP,
+				TRAIL_MAX_POINTS,
+			);
+			pruneTrails(trailMapRef.current, new Set(trainList.map((t) => t.trainNo)));
+			const currentActiveLines = useMapStore.getState().activeLines;
+			drawTrails(scene.trailLayer, trailGfx, trailMapRef.current, currentActiveLines);
+
+			// 혼잡도 히트맵 (조건부, 30프레임마다)
+			const isHeatmapOn = useMapStore.getState().heatmapEnabled;
+			scene.heatmapLayer.visible = isHeatmapOn;
+			if (isHeatmapOn && frameCount % CONGESTION_UPDATE_FRAMES === 0) {
+				const congestion = computeLinkCongestion(LINKS, trainList);
+				drawCongestionHeatmap(heatmapGfx, LINKS, stationScreenMap, congestion);
+			}
 
 			// 시맨틱 줌: 줌 배율에 따라 레이블 alpha + 충돌 감지
 			const alpha = labelAlpha(scene.viewport.scale.x);
@@ -97,19 +200,19 @@ export function MapCanvas() {
 					scene.viewport.scale.x,
 					scene.viewport.x,
 					scene.viewport.y,
-					useMapStore.getState().activeLines,
+					currentActiveLines,
 				);
 			}
 
-			// 선택된 열차 카메라 추적
-			const trackedNo = selectedTrainNoRef.current;
-			if (trackedNo !== null) {
-				const state = animator.getTrainState(trackedNo);
-				if (state !== undefined) {
-					scene.viewport.x = window.innerWidth / 2 - state.currentX * scene.viewport.scale.x;
-					scene.viewport.y = window.innerHeight / 2 - state.currentY * scene.viewport.scale.y;
-				}
-			}
+			tickCameraTracking(selectedTrainNoRef.current, animator, scene.viewport);
+
+			// 성능 측정 (250ms throttle)
+			maybeUpdatePerfStore(
+				scene.app.ticker.FPS,
+				performance.now() - renderStart,
+				animator.count,
+				animator.poolSize,
+			);
 		};
 		scene.app.ticker.add(tickerCallback);
 

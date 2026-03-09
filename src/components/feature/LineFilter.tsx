@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LINE_COLORS } from "@/constants/lineColors";
 import { getEnabledLines, useMapStore } from "@/stores/useMapStore";
+import { usePerfStore } from "@/stores/usePerfStore";
 import { useSimulationStore } from "@/stores/useSimulationStore";
 
 const LINES = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
@@ -17,6 +18,10 @@ export function LineFilter() {
 	const activeLines = useMapStore((s) => s.activeLines);
 	const toggleLine = useMapStore((s) => s.toggleLine);
 	const setAllLinesActive = useMapStore((s) => s.setAllLinesActive);
+	const heatmapEnabled = useMapStore((s) => s.heatmapEnabled);
+	const toggleHeatmap = useMapStore((s) => s.toggleHeatmap);
+	const perfVisible = usePerfStore((s) => s.visible);
+	const togglePerf = usePerfStore((s) => s.toggleVisible);
 	const [showToast, setShowToast] = useState(false);
 
 	const enabledLines = useMemo(() => getEnabledLines(mode), [mode]);
@@ -68,6 +73,27 @@ export function LineFilter() {
 					className="w-18 rounded px-2 py-0.5 text-center text-sm text-white/70 transition-colors hover:text-white"
 				>
 					{allActive ? "전체해제" : "전체"}
+				</button>
+				<div className="mx-1.5 h-5 w-px bg-white/30" />
+				<button
+					type="button"
+					onClick={toggleHeatmap}
+					title="혼잡도 히트맵 (H)"
+					className={`rounded px-2 py-0.5 text-sm transition-colors ${
+						heatmapEnabled ? "bg-orange-500/80 text-white" : "text-white/50 hover:text-white"
+					}`}
+				>
+					히트맵
+				</button>
+				<button
+					type="button"
+					onClick={togglePerf}
+					title="성능 모니터 (P)"
+					className={`rounded px-2 py-0.5 text-sm transition-colors ${
+						perfVisible ? "bg-blue-500/80 text-white" : "text-white/50 hover:text-white"
+					}`}
+				>
+					FPS
 				</button>
 			</div>
 
