@@ -1,5 +1,5 @@
-import { MapCanvas } from "@/components/feature/MapCanvas";
 import { HUD } from "@/components/feature/HUD";
+import { MapCanvas } from "@/components/feature/MapCanvas";
 import { StationPanel } from "@/components/feature/StationPanel";
 import { TrainPanel } from "@/components/feature/TrainPanel";
 import { AppLayout } from "@/components/layout/AppLayout";

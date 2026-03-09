@@ -1,4 +1,4 @@
-import { Text, type Container } from "pixi.js";
+import { type Container, Text } from "pixi.js";
 import type { ScreenCoord } from "@/types/map";
 import type { Station } from "@/types/station";
 
