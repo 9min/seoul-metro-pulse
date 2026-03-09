@@ -39,6 +39,22 @@ export const TRAIN_ANIMATION_DURATION_MS = POLLING_INTERVAL_MS;
 /** 신규 열차 페이드인 시간 (ms) */
 export const TRAIN_FADEIN_MS = 500;
 
+/** 시뮬레이션 모드 폴링 주기 (ms) — 짧은 주기로 끊김 없는 연속 이동 */
+export const SIMULATION_TICK_MS = 3_000;
+
+/** 시뮬레이션 모드 노선별 열차 수 (상행 + 하행) — 총 200대 */
+export const SIMULATION_TRAINS_PER_LINE: Record<number, number> = {
+	1: 32,
+	2: 24,
+	3: 22,
+	4: 22,
+	5: 26,
+	6: 18,
+	7: 22,
+	8: 14,
+	9: 20,
+};
+
 /** 시맨틱 줌: 역 이름 레이블 표시 시작 임계 줌 배율 */
 export const LABEL_SHOW_SCALE = 0.7;
 
