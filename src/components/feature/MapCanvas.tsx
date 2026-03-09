@@ -53,8 +53,16 @@ export function MapCanvas() {
 		// TrainAnimator 초기화 및 ticker 등록
 		const animator = new TrainAnimator();
 		animator.setLayer(scene.trainsLayer);
+		animator.setStationScreenMap(stationScreenMap);
 		animator.setOnTrainTap(handleTrainTap);
 		animatorRef.current = animator;
+
+		// scene 재생성 시 스토어의 기존 열차 데이터로 즉시 복원
+		// (interpolatedTrains effect는 deps 미변경 시 재실행되지 않으므로)
+		const existingTrains = useTrainStore.getState().interpolatedTrains;
+		if (existingTrains.length > 0) {
+			animator.setTargets(existingTrains);
+		}
 
 		const tickerCallback = (): void => {
 			animator.update();
