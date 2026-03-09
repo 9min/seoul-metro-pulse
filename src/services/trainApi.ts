@@ -107,9 +107,15 @@ export async function fetchLineTrains(lineNumber: number): Promise<TrainPosition
 	}
 }
 
-/** 1~9호선 전체 열차 위치를 병렬로 가져온다 */
+/** 개발 모드에서 폴링할 호선 (API 일일 1000건 한도 절약) */
+const DEV_LINES = [4];
+
+/** 전체 호선 */
+const ALL_LINES = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+/** 실시간 열차 위치를 병렬로 가져온다 (개발 모드: 4호선만, 프로덕션: 전체) */
 export async function fetchAllTrains(): Promise<TrainPosition[]> {
-	const lineNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+	const lineNumbers = import.meta.env.DEV ? DEV_LINES : ALL_LINES;
 	const results = await Promise.allSettled(lineNumbers.map((n) => fetchLineTrains(n)));
 
 	const allTrains: TrainPosition[] = [];

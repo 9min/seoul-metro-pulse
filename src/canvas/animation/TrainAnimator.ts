@@ -57,6 +57,10 @@ export class TrainAnimator {
 				existing.fromStationId = train.fromStationId;
 				existing.toStationId = train.toStationId;
 				existing.direction = train.direction;
+				existing.path = [
+					{ x: existing.currentX, y: existing.currentY },
+					{ x: train.x, y: train.y },
+				];
 			} else {
 				// 신규 열차: 목표 위치에 즉시 배치
 				this.states.set(train.trainNo, {
@@ -73,6 +77,7 @@ export class TrainAnimator {
 					duration: 0,
 					fromStationId: train.fromStationId,
 					toStationId: train.toStationId,
+					path: [{ x: train.x, y: train.y }],
 				});
 			}
 		}

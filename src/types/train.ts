@@ -37,6 +37,12 @@ export interface InterpolatedTrain {
 	toStationId: string;
 }
 
+/** 경로 상의 한 점 (화면 좌표) */
+export interface PathPoint {
+	x: number;
+	y: number;
+}
+
 /** 애니메이션 중인 열차 상태 (TrainAnimator 내부용) */
 export interface AnimatedTrainState {
 	trainNo: string;
@@ -58,4 +64,9 @@ export interface AnimatedTrainState {
 	/** 출발/도착 역 ID */
 	fromStationId: string;
 	toStationId: string;
+	/**
+	 * 선로를 따르는 이동 경로 (시작점 → 경유역 → 목표점).
+	 * 직선 구간은 2개, 역을 경유하면 3개 이상의 점으로 구성된다.
+	 */
+	path: PathPoint[];
 }
