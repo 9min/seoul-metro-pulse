@@ -27,6 +27,7 @@ interface MapState {
 	setAllLinesActive: (active: boolean, enabledLines: Set<number>) => void;
 	selectSingleLine: (line: number) => void;
 	syncLinesForMode: (mode: AppMode) => void;
+	removeInactiveLines: (linesWithTrains: Set<number>) => void;
 	toggleHeatmap: () => void;
 }
 
@@ -56,5 +57,14 @@ export const useMapStore = create<MapState>((set) => ({
 	selectSingleLine: (line) => set({ activeLines: new Set([line]) }),
 	syncLinesForMode: (mode) =>
 		set({ activeLines: mode === "live" ? new Set(LIVE_DEFAULT_LINES) : new Set(ALL_LINES) }),
+	removeInactiveLines: (linesWithTrains) =>
+		set((state) => {
+			const next = new Set<number>();
+			for (const line of state.activeLines) {
+				if (linesWithTrains.has(line)) next.add(line);
+			}
+			if (next.size === state.activeLines.size) return state;
+			return { activeLines: next };
+		}),
 	toggleHeatmap: () => set((state) => ({ heatmapEnabled: !state.heatmapEnabled })),
 }));

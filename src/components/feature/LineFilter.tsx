@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { LINE_COLORS } from "@/constants/lineColors";
 import { OVERLAY_TOOLBAR } from "@/constants/overlayStyles";
 import { getEnabledLines, useMapStore } from "@/stores/useMapStore";
@@ -26,14 +26,41 @@ export function LineFilter() {
 	const activeLines = useMapStore((s) => s.activeLines);
 	const toggleLine = useMapStore((s) => s.toggleLine);
 	const setAllLinesActive = useMapStore((s) => s.setAllLinesActive);
+	const removeInactiveLines = useMapStore((s) => s.removeInactiveLines);
 	const rawPositions = useTrainStore((s) => s.rawPositions);
-	const enabledLines = useMemo(() => getEnabledLines(mode), [mode]);
-	const allActive = activeLines.size === enabledLines.size;
+	const baseEnabledLines = useMemo(() => getEnabledLines(mode), [mode]);
 
 	const trainCounts = useMemo(
 		() => (mode === "live" ? countTrainsByLine(rawPositions) : null),
 		[mode, rawPositions],
 	);
+
+	// 마지막으로 확인된 열차 운행 호선을 보존한다.
+	// 전체해제 → 폴링 데이터 클리어 → enabledLines 비어짐 순환을 방지한다.
+	const lastKnownEnabledRef = useRef<Set<number>>(baseEnabledLines);
+
+	// 실시간 모드: 열차가 있는 호선만 활성화 가능
+	const enabledLines = useMemo(() => {
+		if (trainCounts === null) return baseEnabledLines;
+		const live = new Set<number>();
+		for (const [line, count] of trainCounts) {
+			if (count > 0) live.add(line);
+		}
+		if (live.size > 0) {
+			lastKnownEnabledRef.current = live;
+			return live;
+		}
+		return lastKnownEnabledRef.current;
+	}, [trainCounts, baseEnabledLines]);
+
+	// 실시간 모드: 폴링 결과에서 열차 없는 호선을 activeLines에서 제거
+	useEffect(() => {
+		if (mode !== "live" || rawPositions.length === 0) return;
+		removeInactiveLines(enabledLines);
+	}, [mode, rawPositions, enabledLines, removeInactiveLines]);
+
+	const allActive =
+		enabledLines.size > 0 && [...enabledLines].every((l) => activeLines.has(l));
 
 	const handleToggleAll = useCallback(() => {
 		setAllLinesActive(!allActive, enabledLines);
@@ -51,12 +78,13 @@ export function LineFilter() {
 						<button
 							key={line}
 							type="button"
+							disabled={isOff}
 							onClick={() => toggleLine(line, enabledLines)}
 							title={isOff ? `${line}호선: 운행 열차 없음` : `${line}호선${trainCounts !== null ? `: ${count}대` : ""}`}
-							className="relative h-8 w-8 cursor-pointer rounded-full text-sm font-bold text-white transition-opacity"
+							className="relative h-8 w-8 rounded-full text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-15"
 							style={{
 								backgroundColor: colorHex,
-								opacity: isOff ? 0.15 : isActive ? 1 : 0.25,
+								...(!isOff && { opacity: isActive ? 1 : 0.25, cursor: "pointer" }),
 							}}
 						>
 							{line}

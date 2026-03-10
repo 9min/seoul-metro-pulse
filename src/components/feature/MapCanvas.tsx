@@ -305,13 +305,18 @@ export function MapCanvas() {
 
 	// selectedStation 변경 시 flyToStation (검색에서 선택 시, 경로 모드가 아닐 때만)
 	const isRouteMode = useRouteStore((s) => s.isRouteMode);
+	const isRouteModeRef = useRef(isRouteMode);
+	useEffect(() => {
+		isRouteModeRef.current = isRouteMode;
+	}, [isRouteMode]);
+
 	useEffect(() => {
 		if (scene === null || selectedStation === null) return;
-		if (isRouteMode) return;
+		if (isRouteModeRef.current) return;
 		const coord = stationScreenMap.get(selectedStation.id);
 		if (coord === undefined) return;
 		flyToStation(scene.viewport, coord.x, coord.y);
-	}, [scene, selectedStation, stationScreenMap, isRouteMode]);
+	}, [scene, selectedStation, stationScreenMap]);
 
 	return <div ref={containerRef} className="h-full w-full" />;
 }
