@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { LINE_COLORS } from "@/constants/lineColors";
 import { getEnabledLines, useMapStore } from "@/stores/useMapStore";
 import { usePerfStore } from "@/stores/usePerfStore";
@@ -20,9 +20,10 @@ export function LineFilter() {
 	const setAllLinesActive = useMapStore((s) => s.setAllLinesActive);
 	const heatmapEnabled = useMapStore((s) => s.heatmapEnabled);
 	const toggleHeatmap = useMapStore((s) => s.toggleHeatmap);
+	const showToast = useMapStore((s) => s.apiLimitToast);
+	const setShowToast = useMapStore((s) => s.setApiLimitToast);
 	const perfVisible = usePerfStore((s) => s.visible);
 	const togglePerf = usePerfStore((s) => s.toggleVisible);
-	const [showToast, setShowToast] = useState(false);
 
 	const enabledLines = useMemo(() => getEnabledLines(mode), [mode]);
 	const allActive = activeLines.size === enabledLines.size;
@@ -32,7 +33,7 @@ export function LineFilter() {
 		if (!showToast) return;
 		const id = setTimeout(() => setShowToast(false), TOAST_DURATION_MS);
 		return () => clearTimeout(id);
-	}, [showToast]);
+	}, [showToast, setShowToast]);
 
 	const handleToggleAll = useCallback(() => {
 		if (!allActive && mode === "live") {
@@ -97,8 +98,8 @@ export function LineFilter() {
 				</button>
 			</div>
 
-			{/* 토스트 알림 (실제운행 모드에서만) */}
-			{showToast && mode === "live" && (
+			{/* 토스트 알림 (실시간운행 모드에서만) */}
+			{showToast && (
 				<div className="animate-fade-in rounded-lg border border-amber-500/30 bg-amber-900/80 px-4 py-2 text-sm text-amber-200 shadow-lg backdrop-blur-sm">
 					API 사용량 제한으로 1호선만 표시하고 있습니다
 				</div>

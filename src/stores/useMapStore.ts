@@ -3,7 +3,7 @@ import type { AppMode } from "@/stores/useSimulationStore";
 
 const ALL_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
-/** 실제운행 모드에서 활성화된 노선 (나머지는 추후 오픈 예정) */
+/** 실시간운행 모드에서 활성화된 노선 (나머지는 추후 오픈 예정) */
 const LIVE_ENABLED_LINES = new Set([1]);
 
 /** 모드에 따른 활성화 가능 노선을 반환한다 */
@@ -18,6 +18,9 @@ interface MapState {
 	isDragging: boolean;
 	activeLines: Set<number>;
 	heatmapEnabled: boolean;
+	/** API 사용량 제한 토스트 표시 여부 */
+	apiLimitToast: boolean;
+	setApiLimitToast: (show: boolean) => void;
 	setScale: (scale: number) => void;
 	setOffset: (x: number, y: number) => void;
 	setIsDragging: (isDragging: boolean) => void;
@@ -34,6 +37,8 @@ export const useMapStore = create<MapState>((set) => ({
 	isDragging: false,
 	activeLines: new Set(ALL_LINES),
 	heatmapEnabled: false,
+	apiLimitToast: false,
+	setApiLimitToast: (show) => set({ apiLimitToast: show }),
 	setScale: (scale) => set({ scale }),
 	setOffset: (offsetX, offsetY) => set({ offsetX, offsetY }),
 	setIsDragging: (isDragging) => set({ isDragging }),

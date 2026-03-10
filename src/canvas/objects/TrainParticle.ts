@@ -38,8 +38,12 @@ export function createTrainGraphics(line: number): Graphics | null {
 		.fill({ color: hex, alpha: 0.9 })
 		.stroke({ width: 1.2, color: darkenColor(hex, 0.6) });
 
+	// 헤드라이트 그룹 (펄스 애니메이션 대상)
+	const headlight = new Graphics();
+	headlight.label = "headlight";
+
 	// 헤드라이트 빔 (전방으로 퍼지는 빛)
-	gfx
+	headlight
 		.moveTo(L, 0)
 		.lineTo(L + L * 0.8, -W * 0.7)
 		.lineTo(L + L * 0.8, W * 0.7)
@@ -47,7 +51,7 @@ export function createTrainGraphics(line: number): Graphics | null {
 		.fill({ color: 0xffffff, alpha: 0.25 });
 
 	// 헤드라이트 빔 내부 (더 밝은 중심부)
-	gfx
+	headlight
 		.moveTo(L, 0)
 		.lineTo(L + L * 0.5, -W * 0.35)
 		.lineTo(L + L * 0.5, W * 0.35)
@@ -55,10 +59,21 @@ export function createTrainGraphics(line: number): Graphics | null {
 		.fill({ color: 0xffffff, alpha: 0.4 });
 
 	// 헤드라이트 점 (전방에 배치)
-	gfx.circle(L * 0.5, 0, W * 0.35).fill({
+	headlight.circle(L * 0.5, 0, W * 0.35).fill({
 		color: 0xffffff,
 		alpha: 0.95,
 	});
+
+	gfx.addChild(headlight);
+
+	// 선택 외곽선 (깜빡임 애니메이션 대상)
+	const selectionRing = new Graphics();
+	selectionRing.label = "selectionRing";
+	selectionRing
+		.roundRect(-L, -W, L * 2, W * 2, W)
+		.stroke({ width: 1.8, color: 0xffffff });
+	selectionRing.visible = false;
+	gfx.addChild(selectionRing);
 
 	return gfx;
 }
@@ -70,6 +85,13 @@ function normalizeAngle(a: number): number {
 	if (r < -Math.PI) r += Math.PI * 2;
 	return r;
 }
+
+/** 헤드라이트 펄스 주기 (ms) */
+const HEADLIGHT_PULSE_PERIOD_MS = 2_000;
+
+/** 헤드라이트 펄스 alpha 범위 [min, max] */
+const HEADLIGHT_PULSE_MIN = 0.55;
+const HEADLIGHT_PULSE_MAX = 1.0;
 
 /** 프레임별 회전 보간 계수 (60fps 기준 약 8~10프레임에 90% 수렴) */
 const ROTATION_LERP_FACTOR = 0.12;
@@ -134,17 +156,28 @@ export function drawAnimatedTrains(
 	activeLines: Set<number> = ALL_LINES,
 ): void {
 	for (const train of animatedTrains) {
+		const isNew = !pool.has(train.trainNo);
 		const gfx = pool.get(train.trainNo) ?? registerTrain(trainsLayer, pool, train, onTrainTap);
 		if (gfx === null) continue;
 
 		gfx.x = train.currentX;
 		gfx.y = train.currentY;
 
-		// 이동 방향으로 캡슐 부드럽게 회전 (정지 시 이전 rotation 유지)
-		const angle = computeTrainAngle(train);
-		if (!Number.isNaN(angle)) {
-			const diff = normalizeAngle(angle - gfx.rotation);
-			gfx.rotation += diff * ROTATION_LERP_FACTOR;
+		if (isNew && train.trackAngle !== undefined) {
+			// 신규 열차: 트랙 방향으로 즉시 회전 (보간 없이)
+			gfx.rotation = train.trackAngle;
+		} else {
+			// 목표 각도: trackAngle 우선, 없으면 이동 벡터로 계산
+			const angle =
+				train.trackAngle !== undefined
+					? train.trackAngle
+					: computeTrainAngle(train);
+			if (!Number.isNaN(angle)) {
+				const diff = normalizeAngle(angle - gfx.rotation);
+				const MAX_DELTA = Math.PI / 2; // 90° 클램프
+				const clamped = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, diff));
+				gfx.rotation += clamped * ROTATION_LERP_FACTOR;
+			}
 		}
 
 		gfx.alpha = computeTrainAlpha(
@@ -155,5 +188,30 @@ export function drawAnimatedTrains(
 			train.line,
 			activeLines,
 		);
+
+		// 헤드라이트 펄스 애니메이션 (alpha만 변경)
+		const hl = gfx.getChildByLabel("headlight");
+		if (hl !== null) {
+			const t = Math.sin((performance.now() / HEADLIGHT_PULSE_PERIOD_MS) * Math.PI * 2);
+			const norm = (t + 1) / 2; // 0~1
+			hl.alpha = HEADLIGHT_PULSE_MIN + norm * (HEADLIGHT_PULSE_MAX - HEADLIGHT_PULSE_MIN);
+		}
+
+		// 선택 외곽선 깜빡임 (선택된 열차만)
+		const ring = gfx.getChildByLabel("selectionRing");
+		if (ring !== null && ring instanceof Graphics) {
+			const isSelected = selectedTrainNo !== null && train.trainNo === selectedTrainNo;
+			ring.visible = isSelected;
+			if (isSelected) {
+				const blinkT = Math.sin((performance.now() / 300) * Math.PI);
+				const lineHex = colorToHex(LINE_COLORS[train.line] ?? "#ffffff");
+				const strokeColor = blinkT > 0 ? 0xffffff : darkenColor(lineHex, 0.6);
+				const L = TRAIN_CAPSULE_LENGTH;
+				const W = TRAIN_CAPSULE_WIDTH;
+				ring.clear();
+				ring.roundRect(-L, -W, L * 2, W * 2, W)
+					.stroke({ width: 1.8, color: strokeColor });
+			}
+		}
 	}
 }
