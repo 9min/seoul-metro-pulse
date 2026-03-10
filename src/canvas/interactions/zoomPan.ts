@@ -1,5 +1,6 @@
 import type { Container } from "pixi.js";
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_SPEED } from "@/constants/mapConfig";
+import type { ScreenCoord } from "@/types/map";
 import { useMapStore } from "@/stores/useMapStore";
 import { easeInOutCubic } from "@/utils/easing";
 
@@ -133,4 +134,61 @@ export function flyToStation(
 	};
 
 	requestAnimationFrame(animate);
+}
+
+/** 경로 바운딩 박스 여백 비율 */
+const FLY_ROUTE_PADDING = 0.15;
+
+/**
+ * 카메라를 경로 전체가 보이도록 부드럽게 이동한다.
+ * 경로 내 모든 역의 바운딩 박스를 계산하여 적절한 줌 레벨과 중심점으로 이동.
+ */
+export function flyToRoute(
+	viewport: Container,
+	routeStationIds: string[],
+	stationScreenMap: Map<string, ScreenCoord>,
+): void {
+	if (routeStationIds.length === 0) return;
+
+	// 경로 내 역 좌표의 바운딩 박스 계산
+	let minX = Number.POSITIVE_INFINITY;
+	let minY = Number.POSITIVE_INFINITY;
+	let maxX = Number.NEGATIVE_INFINITY;
+	let maxY = Number.NEGATIVE_INFINITY;
+	let count = 0;
+
+	for (const id of routeStationIds) {
+		const coord = stationScreenMap.get(id);
+		if (coord === undefined) continue;
+		if (coord.x < minX) minX = coord.x;
+		if (coord.y < minY) minY = coord.y;
+		if (coord.x > maxX) maxX = coord.x;
+		if (coord.y > maxY) maxY = coord.y;
+		count++;
+	}
+
+	if (count === 0) return;
+
+	const routeWidth = maxX - minX;
+	const routeHeight = maxY - minY;
+	const centerX = (minX + maxX) / 2;
+	const centerY = (minY + maxY) / 2;
+
+	// 화면 크기 대비 적절한 줌 레벨 계산 (패딩 포함)
+	const screenW = window.innerWidth;
+	const screenH = window.innerHeight;
+	const padW = screenW * (1 - FLY_ROUTE_PADDING * 2);
+	const padH = screenH * (1 - FLY_ROUTE_PADDING * 2);
+
+	let targetScale: number;
+	if (routeWidth === 0 && routeHeight === 0) {
+		targetScale = FLY_TARGET_SCALE;
+	} else {
+		const scaleX = routeWidth > 0 ? padW / routeWidth : FLY_TARGET_SCALE;
+		const scaleY = routeHeight > 0 ? padH / routeHeight : FLY_TARGET_SCALE;
+		targetScale = Math.min(scaleX, scaleY, ZOOM_MAX);
+		targetScale = Math.max(targetScale, ZOOM_MIN);
+	}
+
+	flyToStation(viewport, centerX, centerY, targetScale);
 }

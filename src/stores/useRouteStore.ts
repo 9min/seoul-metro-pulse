@@ -3,12 +3,42 @@ import type { Station, StationLink } from "@/types/station";
 import { buildStationGraph, findStationPath } from "@/utils/pathFinder";
 import { buildTransferLinks, buildTransferMap } from "@/utils/transferStation";
 
+export interface TransferDetail {
+	stationName: string;
+	fromLine: number;
+	toLine: number;
+}
+
+/** 경로에서 호선이 바뀌는 지점의 환승 상세 정보를 반환한다 */
+export function getTransferDetails(
+	path: string[],
+	stationMap: Map<string, Station>,
+): TransferDetail[] {
+	if (path.length <= 1) return [];
+	const details: TransferDetail[] = [];
+	let currentLine = -1;
+	for (const stationId of path) {
+		const station = stationMap.get(stationId);
+		if (station === undefined) continue;
+		if (currentLine !== -1 && station.line !== currentLine) {
+			details.push({
+				stationName: station.name,
+				fromLine: currentLine,
+				toLine: station.line,
+			});
+		}
+		currentLine = station.line;
+	}
+	return details;
+}
+
 interface RouteState {
 	fromStation: Station | null;
 	toStation: Station | null;
 	route: string[] | null;
 	transferCount: number;
 	estimatedMinutes: number;
+	transferDetails: TransferDetail[];
 	isRouteMode: boolean;
 	setFromStation: (station: Station | null) => void;
 	setToStation: (
@@ -51,14 +81,15 @@ export const useRouteStore = create<RouteState>((set) => ({
 	route: null,
 	transferCount: 0,
 	estimatedMinutes: 0,
+	transferDetails: [],
 	isRouteMode: false,
 
 	setFromStation: (station) =>
-		set({ fromStation: station, toStation: null, route: null, transferCount: 0, estimatedMinutes: 0 }),
+		set({ fromStation: station, toStation: null, route: null, transferCount: 0, estimatedMinutes: 0, transferDetails: [] }),
 
 	setToStation: (station, stations, links, stationMap) => {
 		if (station === null) {
-			set({ toStation: null, route: null, transferCount: 0, estimatedMinutes: 0 });
+			set({ toStation: null, route: null, transferCount: 0, estimatedMinutes: 0, transferDetails: [] });
 			return;
 		}
 
@@ -73,7 +104,7 @@ export const useRouteStore = create<RouteState>((set) => ({
 
 			const route = findStationPath(graph, state.fromStation.id, station.id);
 			if (route.length === 0) {
-				return { toStation: station, route: null, transferCount: 0, estimatedMinutes: 0 };
+				return { toStation: station, route: null, transferCount: 0, estimatedMinutes: 0, transferDetails: [] };
 			}
 
 			return {
@@ -81,6 +112,7 @@ export const useRouteStore = create<RouteState>((set) => ({
 				route,
 				transferCount: countTransfers(route, stationMap),
 				estimatedMinutes: estimateTime(route, stationMap),
+				transferDetails: getTransferDetails(route, stationMap),
 			};
 		});
 	},
@@ -92,6 +124,7 @@ export const useRouteStore = create<RouteState>((set) => ({
 			route: null,
 			transferCount: 0,
 			estimatedMinutes: 0,
+			transferDetails: [],
 			isRouteMode: false,
 		}),
 
@@ -106,6 +139,7 @@ export const useRouteStore = create<RouteState>((set) => ({
 					route: null,
 					transferCount: 0,
 					estimatedMinutes: 0,
+					transferDetails: [],
 				};
 			}
 			return { isRouteMode: true };

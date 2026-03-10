@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
+import {
+	OVERLAY_DROPDOWN,
+	OVERLAY_INPUT,
+	OVERLAY_TOOLBAR,
+} from "@/constants/overlayStyles";
 import { useStationStore } from "@/stores/useStationStore";
 import type { Station } from "@/types/station";
 import type { TransferMap } from "@/utils/transferStation";
@@ -77,7 +82,7 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 				type="button"
 				onClick={() => setSearchOpen(true)}
 				title="역 검색 (/)"
-				className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 bg-gray-900/85 px-3 py-2 text-sm text-gray-400 shadow-xl backdrop-blur-md transition-colors hover:text-white"
+				className={`pointer-events-auto flex cursor-pointer items-center gap-1.5 ${OVERLAY_TOOLBAR} px-3 py-2 text-sm text-gray-400 transition-colors hover:text-white`}
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
@@ -95,7 +100,7 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 					<line x1="21" y1="21" x2="16.65" y2="16.65" />
 				</svg>
 				역 검색
-				<kbd className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-gray-500">
+				<kbd className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-xs text-gray-500">
 					/
 				</kbd>
 			</button>
@@ -111,11 +116,11 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 				onChange={(e) => setSearchQuery(e.target.value)}
 				onKeyDown={handleKeyDown}
 				placeholder="역 이름 검색..."
-				className="w-full rounded-lg border border-white/20 bg-gray-900/95 px-3 py-2 text-sm text-white shadow-xl outline-none backdrop-blur-md placeholder:text-gray-500 focus:border-blue-500/50"
+				className={`w-full ${OVERLAY_INPUT} px-3 py-2 text-sm text-white outline-none placeholder:text-gray-500 focus:border-blue-500/50`}
 			/>
 
 			{searchResults.length > 0 && (
-				<ul className="absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-white/10 bg-gray-900/95 py-1 shadow-2xl backdrop-blur-md">
+				<ul className={`absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto ${OVERLAY_DROPDOWN} py-1`}>
 					{searchResults.map((station, idx) => {
 						const transferLines = transferMap.get(station.name);
 						const lines =
@@ -148,7 +153,7 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 			)}
 
 			{searchQuery.trim() !== "" && searchResults.length === 0 && (
-				<div className="absolute top-full right-0 left-0 z-50 mt-1 rounded-lg border border-white/10 bg-gray-900/95 px-3 py-3 text-center text-sm text-gray-500 shadow-2xl backdrop-blur-md">
+				<div className={`absolute top-full right-0 left-0 z-50 mt-1 ${OVERLAY_DROPDOWN} px-3 py-3 text-center text-sm text-gray-500`}>
 					검색 결과 없음
 				</div>
 			)}

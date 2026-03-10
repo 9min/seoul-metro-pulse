@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { TrainAnimator } from "@/canvas/animation/TrainAnimator";
 import { handleStationTap } from "@/canvas/interactions/stationClick";
 import { handleTrainTap } from "@/canvas/interactions/trainClick";
-import { flyToStation, setupZoomPan } from "@/canvas/interactions/zoomPan";
+import { flyToRoute, flyToStation, setupZoomPan } from "@/canvas/interactions/zoomPan";
 import { computeLinkCongestion, drawCongestionHeatmap } from "@/canvas/objects/CongestionHeatmap";
 import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
 import { drawRoute, updateRoutePulse } from "@/canvas/objects/RoutePath";
@@ -291,24 +291,27 @@ export function MapCanvas() {
 		}
 	}, [scene, selectedStation, activeLines, route]);
 
-	// 경로 변경 시 routeLayer에 경로 렌더링
+	// 경로 변경 시 routeLayer에 경로 렌더링 + 전체 경로가 보이도록 카메라 이동
 	useEffect(() => {
 		if (scene === null) return;
 		if (route !== null && route.length > 0) {
 			const stationMap = useStationStore.getState().stationMap;
 			drawRoute(scene.routeLayer, route, stationScreenMap, stationMap);
+			flyToRoute(scene.viewport, route, stationScreenMap);
 		} else {
 			scene.routeLayer.removeChildren();
 		}
 	}, [scene, route, stationScreenMap]);
 
-	// selectedStation 변경 시 flyToStation (검색에서 선택 시)
+	// selectedStation 변경 시 flyToStation (검색에서 선택 시, 경로 모드가 아닐 때만)
+	const isRouteMode = useRouteStore((s) => s.isRouteMode);
 	useEffect(() => {
 		if (scene === null || selectedStation === null) return;
+		if (isRouteMode) return;
 		const coord = stationScreenMap.get(selectedStation.id);
 		if (coord === undefined) return;
 		flyToStation(scene.viewport, coord.x, coord.y);
-	}, [scene, selectedStation, stationScreenMap]);
+	}, [scene, selectedStation, stationScreenMap, isRouteMode]);
 
 	return <div ref={containerRef} className="h-full w-full" />;
 }

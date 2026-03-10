@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import type { AppMode } from "@/stores/useSimulationStore";
+import { isOperatingHours } from "@/utils/operatingHours";
 
 const ALL_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+const LIVE_DEFAULT_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
 
 /** 실시간운행 모드에서 활성화 가능한 노선 (모든 호선 지원) */
 const LIVE_ENABLED_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -33,7 +35,7 @@ export const useMapStore = create<MapState>((set) => ({
 	offsetX: 0,
 	offsetY: 0,
 	isDragging: false,
-	activeLines: new Set(ALL_LINES),
+	activeLines: isOperatingHours() ? new Set(LIVE_DEFAULT_LINES) : new Set(ALL_LINES),
 	heatmapEnabled: false,
 	setScale: (scale) => set({ scale }),
 	setOffset: (offsetX, offsetY) => set({ offsetX, offsetY }),
@@ -53,6 +55,6 @@ export const useMapStore = create<MapState>((set) => ({
 		set({ activeLines: active ? new Set(enabledLines) : new Set() }),
 	selectSingleLine: (line) => set({ activeLines: new Set([line]) }),
 	syncLinesForMode: (mode) =>
-		set({ activeLines: mode === "live" ? new Set([1]) : new Set(ALL_LINES) }),
+		set({ activeLines: mode === "live" ? new Set(LIVE_DEFAULT_LINES) : new Set(ALL_LINES) }),
 	toggleHeatmap: () => set((state) => ({ heatmapEnabled: !state.heatmapEnabled })),
 }));

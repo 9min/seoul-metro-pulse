@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
+import {
+	OVERLAY_DROPDOWN,
+	OVERLAY_INPUT,
+	OVERLAY_PANEL,
+	OVERLAY_RESULT,
+} from "@/constants/overlayStyles";
 import { useRouteStore } from "@/stores/useRouteStore";
 import { useStationStore } from "@/stores/useStationStore";
 import type { Station } from "@/types/station";
@@ -38,7 +44,7 @@ function SearchDropdown({
 	if (filtered.length === 0) return null;
 
 	return (
-		<ul className="absolute top-full right-0 left-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-gray-900/95 py-1 shadow-2xl backdrop-blur-md">
+		<ul className={`absolute top-full right-0 left-0 z-50 mt-1 max-h-48 overflow-y-auto ${OVERLAY_DROPDOWN} py-1`}>
 			{filtered.map((station) => {
 				const transferLines = transferMap.get(station.name);
 				const lines =
@@ -122,7 +128,7 @@ export function RoutePanel({ transferMap, onStationSelect }: RoutePanelProps) {
 	if (!isRouteMode) return null;
 
 	return (
-		<div className="pointer-events-auto w-64 rounded-xl border border-white/10 bg-gray-900/90 p-4 shadow-2xl backdrop-blur-md">
+		<div className={`pointer-events-auto w-64 ${OVERLAY_PANEL} p-4`}>
 			<div className="mb-3 flex items-center justify-between">
 				<h3 className="text-sm font-bold text-white">경로 탐색</h3>
 				<button
@@ -138,7 +144,7 @@ export function RoutePanel({ transferMap, onStationSelect }: RoutePanelProps) {
 			<div className="relative mb-2">
 				<div className="mb-1 flex items-center gap-1.5">
 					<span className="inline-block h-2 w-2 rounded-full bg-green-400" />
-					<span className="text-[11px] text-gray-400">출발</span>
+					<span className="text-xs text-gray-400">출발</span>
 				</div>
 				<input
 					ref={fromRef}
@@ -150,7 +156,7 @@ export function RoutePanel({ transferMap, onStationSelect }: RoutePanelProps) {
 					}}
 					onFocus={() => setActiveInput("from")}
 					placeholder="출발역 입력..."
-					className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white outline-none placeholder:text-gray-600 focus:border-green-500/50"
+					className={`w-full ${OVERLAY_INPUT} px-3 py-1.5 text-xs text-white outline-none placeholder:text-gray-600 focus:border-green-500/50`}
 				/>
 				{activeInput === "from" && (
 					<SearchDropdown
@@ -166,7 +172,7 @@ export function RoutePanel({ transferMap, onStationSelect }: RoutePanelProps) {
 			<div className="relative mb-3">
 				<div className="mb-1 flex items-center gap-1.5">
 					<span className="inline-block h-2 w-2 rounded-full bg-red-400" />
-					<span className="text-[11px] text-gray-400">도착</span>
+					<span className="text-xs text-gray-400">도착</span>
 				</div>
 				<input
 					ref={toRef}
@@ -178,7 +184,7 @@ export function RoutePanel({ transferMap, onStationSelect }: RoutePanelProps) {
 					}}
 					onFocus={() => setActiveInput("to")}
 					placeholder="도착역 입력..."
-					className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white outline-none placeholder:text-gray-600 focus:border-red-500/50"
+					className={`w-full ${OVERLAY_INPUT} px-3 py-1.5 text-xs text-white outline-none placeholder:text-gray-600 focus:border-red-500/50`}
 				/>
 				{activeInput === "to" && (
 					<SearchDropdown
@@ -190,13 +196,13 @@ export function RoutePanel({ transferMap, onStationSelect }: RoutePanelProps) {
 				)}
 			</div>
 
-			<p className="mb-2 text-[10px] text-gray-600">
+			<p className="mb-2 text-xs text-gray-600">
 				지도에서 역 클릭으로도 설정 가능 (첫 클릭=출발, 두 번째=도착)
 			</p>
 
 			{/* 경로 결과 */}
 			{route !== null && route.length > 0 && (
-				<div className="rounded-lg border border-white/10 bg-black/30 p-3">
+				<div className={`${OVERLAY_RESULT} p-3`}>
 					<div className="flex items-center justify-between">
 						<span className="text-lg font-bold text-white">약 {estimatedMinutes}분</span>
 						<span className="text-xs text-gray-400">{route.length}개역</span>

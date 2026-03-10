@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { useRouteStore, countTransfers, estimateTime } from "@/stores/useRouteStore";
+import { useRouteStore, countTransfers, estimateTime, getTransferDetails } from "@/stores/useRouteStore";
 import type { Station, StationLink } from "@/types/station";
 
 const MOCK_STATIONS: Station[] = [
@@ -76,6 +76,30 @@ describe("countTransfers", () => {
 	it("환승 횟수를 정확히 계산한다", () => {
 		// 1호선 → 2호선 = 1회 환승
 		expect(countTransfers(["L1S01", "L1S02", "L2S01"], stationMap)).toBe(1);
+	});
+});
+
+describe("getTransferDetails", () => {
+	it("같은 호선이면 빈 배열을 반환한다", () => {
+		expect(getTransferDetails(["L1S01", "L1S02", "L1S03"], stationMap)).toEqual([]);
+	});
+
+	it("환승 지점의 역명과 호선 정보를 반환한다", () => {
+		// 1호선 서울역 → 1호선 시청 → 2호선 시청 = 시청에서 1→2 환승
+		const details = getTransferDetails(["L1S01", "L1S02", "L2S01"], stationMap);
+		expect(details).toEqual([
+			{ stationName: "시청", fromLine: 1, toLine: 2 },
+		]);
+	});
+
+	it("다중 환승을 모두 반환한다", () => {
+		// 1호선 → 2호선 → 다시 1호선
+		const details = getTransferDetails(["L1S01", "L2S01", "L1S03"], stationMap);
+		expect(details).toHaveLength(2);
+		expect(details[0]?.fromLine).toBe(1);
+		expect(details[0]?.toLine).toBe(2);
+		expect(details[1]?.fromLine).toBe(2);
+		expect(details[1]?.toLine).toBe(1);
 	});
 });
 

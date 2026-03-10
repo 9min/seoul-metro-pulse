@@ -2,9 +2,8 @@ import { useMemo } from "react";
 import { HUD } from "@/components/feature/HUD";
 import { LineFilter } from "@/components/feature/LineFilter";
 import { MapCanvas } from "@/components/feature/MapCanvas";
-import { RoutePanel } from "@/components/feature/RoutePanel";
+import { SearchRoutePanel } from "@/components/feature/SearchRoutePanel";
 import { StationPanel } from "@/components/feature/StationPanel";
-import { StationSearch } from "@/components/feature/StationSearch";
 import { ToolBar } from "@/components/feature/ToolBar";
 import { TrainPanel } from "@/components/feature/TrainPanel";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -40,9 +39,11 @@ export function App() {
 				<>
 					<HUD />
 					<ToolBar />
-					<div className="pointer-events-none absolute top-52 left-6 flex flex-col gap-2">
-						<StationSearch transferMap={transferMap} onSelect={handleStationSelect} />
-						<RoutePanel transferMap={transferMap} onStationSelect={handleStationSelect} />
+					<div className="pointer-events-none absolute top-52 left-4">
+						<SearchRoutePanel
+							transferMap={transferMap}
+							onStationSelect={handleStationSelect}
+						/>
 					</div>
 					<LineFilter />
 					{!isRouteMode && <StationPanel />}
