@@ -152,8 +152,8 @@ describe("interpolateTrainPosition", () => {
 		expect(r1).not.toBeNull();
 		expect(r2).not.toBeNull();
 		// 출발 예측이 도착 예측보다 다음역에 더 가깝다
-		expect(r2!.x).toBeGreaterThan(r1!.x);
-		expect(r2!.y).toBeGreaterThan(r1!.y);
+		expect(r2?.x).toBeGreaterThan(r1?.x ?? 0);
+		expect(r2?.y).toBeGreaterThan(r1?.y ?? 0);
 	});
 
 	it("pollHistory 없이 호출하면 기존 고정 예측값을 사용한다", () => {
@@ -182,7 +182,7 @@ describe("interpolateTrainPosition", () => {
 		const r2 = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP, ADJ_MAP, h2);
 		expect(r1).not.toBeNull();
 		expect(r2).not.toBeNull();
-		expect(r2!.x).toBeGreaterThan(r1!.x);
+		expect(r2?.x).toBeGreaterThan(r1?.x ?? 0);
 	});
 
 	it("진입→도착 전환 시 예측 위치가 순방향으로 진행한다", () => {
@@ -194,8 +194,8 @@ describe("interpolateTrainPosition", () => {
 		expect(r1).not.toBeNull();
 		expect(r2).not.toBeNull();
 		// 도착 예측(다음역 방향)이 진입 예측(현재역 도착)보다 앞에 있다
-		expect(r2!.x).toBeGreaterThan(r1!.x);
-		expect(r2!.y).toBeGreaterThan(r1!.y);
+		expect(r2?.x).toBeGreaterThan(r1?.x ?? 0);
+		expect(r2?.y).toBeGreaterThan(r1?.y ?? 0);
 	});
 });
 

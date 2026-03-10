@@ -197,6 +197,36 @@ function interpolateAlongPath(path: PathPoint[], cumulativeDist: number[], t: nu
 	return path[path.length - 1] as PathPoint;
 }
 
+/** 단일 열차의 프레임별 위치를 보간한다 */
+function advanceTrainState(state: AnimatedTrainState, now: number): void {
+	const prevX = state.currentX;
+	const prevY = state.currentY;
+
+	if (state.duration <= 0) {
+		state.currentX = state.targetX;
+		state.currentY = state.targetY;
+	} else {
+		const elapsed = now - state.startTime;
+		const rawT = Math.min(elapsed / state.duration, 1);
+		const t = state.linear ? rawT : easeInOutCubic(rawT);
+
+		if (state.path.length <= 2) {
+			state.currentX = state.startX + (state.targetX - state.startX) * t;
+			state.currentY = state.startY + (state.targetY - state.startY) * t;
+		} else {
+			const pos = interpolateAlongPath(state.path, state.pathCumulativeDist, t);
+			state.currentX = pos.x;
+			state.currentY = pos.y;
+		}
+	}
+
+	const frameDx = state.currentX - prevX;
+	const frameDy = state.currentY - prevY;
+	if (Math.abs(frameDx) > 0.1 || Math.abs(frameDy) > 0.1) {
+		state.trackAngle = Math.atan2(frameDy, frameDx);
+	}
+}
+
 /**
  * 열차 애니메이션 엔진.
  * PixiJS ticker에서 매 프레임 update()를 호출하여 열차 위치를 보간한다.
@@ -239,39 +269,46 @@ export class TrainAnimator {
 		const now = performance.now();
 		const animDuration = duration ?? TRAIN_ANIMATION_DURATION_MS;
 		const newKeys = new Set<string>();
-
 		const isLinear = linear ?? false;
+
 		for (const train of interpolated) {
 			newKeys.add(train.trainNo);
-
-			const existing = this.states.get(train.trainNo);
-			if (existing !== undefined) {
-				if (existing.direction !== train.direction) {
-					// 방향 전환: 기존 위치 무시, 새 위치에 즉시 배치
-					this.states.set(
-						train.trainNo,
-						createNewTrainState(train, now, isLinear, animDuration, stationScreenMap),
-					);
-				} else {
-					updateExistingTrain(
-						existing,
-						train,
-						now,
-						animDuration,
-						isLinear,
-						stationScreenMap,
-						stationGraph,
-					);
-				}
-			} else {
-				this.states.set(
-					train.trainNo,
-					createNewTrainState(train, now, isLinear, animDuration, stationScreenMap),
-				);
-			}
+			this.upsertTrain(train, now, animDuration, isLinear, stationScreenMap, stationGraph);
 		}
 
-		// 사라진 열차 제거 (states + pool)
+		this.removeStaleTrain(newKeys);
+	}
+
+	/** 단일 열차의 상태를 갱신하거나 신규 생성한다 */
+	private upsertTrain(
+		train: InterpolatedTrain,
+		now: number,
+		animDuration: number,
+		isLinear: boolean,
+		stationScreenMap?: Map<string, ScreenCoord>,
+		stationGraph?: StationGraph,
+	): void {
+		const existing = this.states.get(train.trainNo);
+		if (existing !== undefined && existing.direction === train.direction) {
+			updateExistingTrain(
+				existing,
+				train,
+				now,
+				animDuration,
+				isLinear,
+				stationScreenMap,
+				stationGraph,
+			);
+		} else {
+			this.states.set(
+				train.trainNo,
+				createNewTrainState(train, now, isLinear, animDuration, stationScreenMap),
+			);
+		}
+	}
+
+	/** 새 데이터에 없는 열차를 제거한다 */
+	private removeStaleTrain(newKeys: Set<string>): void {
 		for (const key of this.states.keys()) {
 			if (!newKeys.has(key)) {
 				this.states.delete(key);
@@ -295,37 +332,7 @@ export class TrainAnimator {
 		const trainList: AnimatedTrainState[] = [];
 
 		for (const state of this.states.values()) {
-			const prevX = state.currentX;
-			const prevY = state.currentY;
-
-			if (state.duration <= 0) {
-				// 즉시 배치된 열차 (신규 또는 애니메이션 완료)
-				state.currentX = state.targetX;
-				state.currentY = state.targetY;
-			} else {
-				const elapsed = now - state.startTime;
-				const rawT = Math.min(elapsed / state.duration, 1);
-				const t = state.linear ? rawT : easeInOutCubic(rawT);
-
-				if (state.path.length <= 2) {
-					// 2점 이하: 직선 보간 (성능 최적화)
-					state.currentX = state.startX + (state.targetX - state.startX) * t;
-					state.currentY = state.startY + (state.targetY - state.startY) * t;
-				} else {
-					// 3점 이상: polyline 보간
-					const pos = interpolateAlongPath(state.path, state.pathCumulativeDist, t);
-					state.currentX = pos.x;
-					state.currentY = pos.y;
-				}
-			}
-
-			// 프레임별 trackAngle 갱신 (실제 이동 방향 기반)
-			const frameDx = state.currentX - prevX;
-			const frameDy = state.currentY - prevY;
-			if (Math.abs(frameDx) > 0.1 || Math.abs(frameDy) > 0.1) {
-				state.trackAngle = Math.atan2(frameDy, frameDx);
-			}
-
+			advanceTrainState(state, now);
 			trainList.push(state);
 		}
 

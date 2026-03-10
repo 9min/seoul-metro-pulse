@@ -69,9 +69,7 @@ export function createTrainGraphics(line: number): Graphics | null {
 	// 선택 외곽선 (깜빡임 애니메이션 대상)
 	const selectionRing = new Graphics();
 	selectionRing.label = "selectionRing";
-	selectionRing
-		.roundRect(-L, -W, L * 2, W * 2, W)
-		.stroke({ width: 1.8, color: 0xffffff });
+	selectionRing.roundRect(-L, -W, L * 2, W * 2, W).stroke({ width: 1.8, color: 0xffffff });
 	selectionRing.visible = false;
 	gfx.addChild(selectionRing);
 
@@ -140,6 +138,51 @@ function registerTrain(
 	return created;
 }
 
+/** 열차 캡슐의 회전을 갱신한다 */
+function updateTrainRotation(gfx: Graphics, train: AnimatedTrainState, isNew: boolean): void {
+	if (isNew && train.trackAngle !== undefined) {
+		gfx.rotation = train.trackAngle;
+		return;
+	}
+	const angle = train.trackAngle !== undefined ? train.trackAngle : computeTrainAngle(train);
+	if (!Number.isNaN(angle)) {
+		const diff = normalizeAngle(angle - gfx.rotation);
+		const MAX_DELTA = Math.PI / 2;
+		const clamped = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, diff));
+		gfx.rotation += clamped * ROTATION_LERP_FACTOR;
+	}
+}
+
+/** 헤드라이트 펄스 애니메이션을 갱신한다 */
+function updateHeadlightPulse(gfx: Graphics): void {
+	const hl = gfx.getChildByLabel("headlight");
+	if (hl === null) return;
+	const t = Math.sin((performance.now() / HEADLIGHT_PULSE_PERIOD_MS) * Math.PI * 2);
+	const norm = (t + 1) / 2;
+	hl.alpha = HEADLIGHT_PULSE_MIN + norm * (HEADLIGHT_PULSE_MAX - HEADLIGHT_PULSE_MIN);
+}
+
+/** 선택 외곽선 깜빡임을 갱신한다 */
+function updateSelectionRing(
+	gfx: Graphics,
+	train: AnimatedTrainState,
+	selectedTrainNo: string | null,
+): void {
+	const ring = gfx.getChildByLabel("selectionRing");
+	if (ring === null || !(ring instanceof Graphics)) return;
+	const isSelected = selectedTrainNo !== null && train.trainNo === selectedTrainNo;
+	ring.visible = isSelected;
+	if (isSelected) {
+		const blinkT = Math.sin((performance.now() / 300) * Math.PI);
+		const lineHex = colorToHex(LINE_COLORS[train.line] ?? "#ffffff");
+		const strokeColor = blinkT > 0 ? 0xffffff : darkenColor(lineHex, 0.6);
+		const L = TRAIN_CAPSULE_LENGTH;
+		const W = TRAIN_CAPSULE_WIDTH;
+		ring.clear();
+		ring.roundRect(-L, -W, L * 2, W * 2, W).stroke({ width: 1.8, color: strokeColor });
+	}
+}
+
 /**
  * 애니메이션 상태 배열로부터 열차 캡슐을 렌더링한다.
  * Graphics 풀링: trainNo → Graphics 맵으로 안정적인 열차 identity를 보장한다.
@@ -163,22 +206,7 @@ export function drawAnimatedTrains(
 		gfx.x = train.currentX;
 		gfx.y = train.currentY;
 
-		if (isNew && train.trackAngle !== undefined) {
-			// 신규 열차: 트랙 방향으로 즉시 회전 (보간 없이)
-			gfx.rotation = train.trackAngle;
-		} else {
-			// 목표 각도: trackAngle 우선, 없으면 이동 벡터로 계산
-			const angle =
-				train.trackAngle !== undefined
-					? train.trackAngle
-					: computeTrainAngle(train);
-			if (!Number.isNaN(angle)) {
-				const diff = normalizeAngle(angle - gfx.rotation);
-				const MAX_DELTA = Math.PI / 2; // 90° 클램프
-				const clamped = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, diff));
-				gfx.rotation += clamped * ROTATION_LERP_FACTOR;
-			}
-		}
+		updateTrainRotation(gfx, train, isNew);
 
 		gfx.alpha = computeTrainAlpha(
 			train.trainNo,
@@ -189,29 +217,7 @@ export function drawAnimatedTrains(
 			activeLines,
 		);
 
-		// 헤드라이트 펄스 애니메이션 (alpha만 변경)
-		const hl = gfx.getChildByLabel("headlight");
-		if (hl !== null) {
-			const t = Math.sin((performance.now() / HEADLIGHT_PULSE_PERIOD_MS) * Math.PI * 2);
-			const norm = (t + 1) / 2; // 0~1
-			hl.alpha = HEADLIGHT_PULSE_MIN + norm * (HEADLIGHT_PULSE_MAX - HEADLIGHT_PULSE_MIN);
-		}
-
-		// 선택 외곽선 깜빡임 (선택된 열차만)
-		const ring = gfx.getChildByLabel("selectionRing");
-		if (ring !== null && ring instanceof Graphics) {
-			const isSelected = selectedTrainNo !== null && train.trainNo === selectedTrainNo;
-			ring.visible = isSelected;
-			if (isSelected) {
-				const blinkT = Math.sin((performance.now() / 300) * Math.PI);
-				const lineHex = colorToHex(LINE_COLORS[train.line] ?? "#ffffff");
-				const strokeColor = blinkT > 0 ? 0xffffff : darkenColor(lineHex, 0.6);
-				const L = TRAIN_CAPSULE_LENGTH;
-				const W = TRAIN_CAPSULE_WIDTH;
-				ring.clear();
-				ring.roundRect(-L, -W, L * 2, W * 2, W)
-					.stroke({ width: 1.8, color: strokeColor });
-			}
-		}
+		updateHeadlightPulse(gfx);
+		updateSelectionRing(gfx, train, selectedTrainNo);
 	}
 }
