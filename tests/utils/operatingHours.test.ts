@@ -45,20 +45,14 @@ describe("msUntilOperatingStart", () => {
 	});
 
 	it("03:00이면 05:30까지 2시간 30분(9000000ms)을 반환한다", () => {
-		expect(msUntilOperatingStart(new Date("2026-03-09T03:00:00"))).toBe(
-			2.5 * 60 * 60 * 1000,
-		);
+		expect(msUntilOperatingStart(new Date("2026-03-09T03:00:00"))).toBe(2.5 * 60 * 60 * 1000);
 	});
 
 	it("01:00이면 05:30까지 4시간 30분을 반환한다", () => {
-		expect(msUntilOperatingStart(new Date("2026-03-09T01:00:00"))).toBe(
-			4.5 * 60 * 60 * 1000,
-		);
+		expect(msUntilOperatingStart(new Date("2026-03-09T01:00:00"))).toBe(4.5 * 60 * 60 * 1000);
 	});
 
 	it("05:00이면 05:30까지 30분을 반환한다", () => {
-		expect(msUntilOperatingStart(new Date("2026-03-09T05:00:00"))).toBe(
-			30 * 60 * 1000,
-		);
+		expect(msUntilOperatingStart(new Date("2026-03-09T05:00:00"))).toBe(30 * 60 * 1000);
 	});
 });

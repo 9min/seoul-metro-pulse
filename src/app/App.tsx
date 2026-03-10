@@ -40,10 +40,7 @@ export function App() {
 					<HUD />
 					<ToolBar />
 					<div className="pointer-events-none absolute top-52 left-4">
-						<SearchRoutePanel
-							transferMap={transferMap}
-							onStationSelect={handleStationSelect}
-						/>
+						<SearchRoutePanel transferMap={transferMap} onStationSelect={handleStationSelect} />
 					</div>
 					<LineFilter />
 					{!isRouteMode && <StationPanel />}

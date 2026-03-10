@@ -44,7 +44,9 @@ function SearchDropdown({
 	if (filtered.length === 0) return null;
 
 	return (
-		<ul className={`absolute top-full right-0 left-0 z-50 mt-1 max-h-48 overflow-y-auto ${OVERLAY_DROPDOWN} py-1`}>
+		<ul
+			className={`absolute top-full right-0 left-0 z-50 mt-1 max-h-48 overflow-y-auto ${OVERLAY_DROPDOWN} py-1`}
+		>
 			{filtered.map((station) => {
 				const transferLines = transferMap.get(station.name);
 				const lines =

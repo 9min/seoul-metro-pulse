@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { useRouteStore, countTransfers, estimateTime, getTransferDetails } from "@/stores/useRouteStore";
+import {
+	countTransfers,
+	estimateTime,
+	getTransferDetails,
+	useRouteStore,
+} from "@/stores/useRouteStore";
 import type { Station, StationLink } from "@/types/station";
 
 const MOCK_STATIONS: Station[] = [
@@ -7,7 +12,7 @@ const MOCK_STATIONS: Station[] = [
 	{ id: "L4S01", name: "서울역", line: 4, x: 126.972, y: 37.555 },
 	{ id: "L1S02", name: "시청", line: 1, x: 126.978, y: 37.566 },
 	{ id: "L2S01", name: "시청", line: 2, x: 126.978, y: 37.566 },
-	{ id: "L1S03", name: "종각", line: 1, x: 126.983, y: 37.570 },
+	{ id: "L1S03", name: "종각", line: 1, x: 126.983, y: 37.57 },
 	{ id: "L2S02", name: "을지로입구", line: 2, x: 126.982, y: 37.566 },
 ];
 
@@ -87,9 +92,7 @@ describe("getTransferDetails", () => {
 	it("환승 지점의 역명과 호선 정보를 반환한다", () => {
 		// 1호선 서울역 → 1호선 시청 → 2호선 시청 = 시청에서 1→2 환승
 		const details = getTransferDetails(["L1S01", "L1S02", "L2S01"], stationMap);
-		expect(details).toEqual([
-			{ stationName: "시청", fromLine: 1, toLine: 2 },
-		]);
+		expect(details).toEqual([{ stationName: "시청", fromLine: 1, toLine: 2 }]);
 	});
 
 	it("다중 환승을 모두 반환한다", () => {

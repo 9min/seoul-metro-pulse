@@ -85,11 +85,24 @@ export const useRouteStore = create<RouteState>((set) => ({
 	isRouteMode: false,
 
 	setFromStation: (station) =>
-		set({ fromStation: station, toStation: null, route: null, transferCount: 0, estimatedMinutes: 0, transferDetails: [] }),
+		set({
+			fromStation: station,
+			toStation: null,
+			route: null,
+			transferCount: 0,
+			estimatedMinutes: 0,
+			transferDetails: [],
+		}),
 
 	setToStation: (station, stations, links, stationMap) => {
 		if (station === null) {
-			set({ toStation: null, route: null, transferCount: 0, estimatedMinutes: 0, transferDetails: [] });
+			set({
+				toStation: null,
+				route: null,
+				transferCount: 0,
+				estimatedMinutes: 0,
+				transferDetails: [],
+			});
 			return;
 		}
 
@@ -104,7 +117,13 @@ export const useRouteStore = create<RouteState>((set) => ({
 
 			const route = findStationPath(graph, state.fromStation.id, station.id);
 			if (route.length === 0) {
-				return { toStation: station, route: null, transferCount: 0, estimatedMinutes: 0, transferDetails: [] };
+				return {
+					toStation: station,
+					route: null,
+					transferCount: 0,
+					estimatedMinutes: 0,
+					transferDetails: [],
+				};
 			}
 
 			return {

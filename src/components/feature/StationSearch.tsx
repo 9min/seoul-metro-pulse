@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
-import {
-	OVERLAY_DROPDOWN,
-	OVERLAY_INPUT,
-	OVERLAY_TOOLBAR,
-} from "@/constants/overlayStyles";
+import { OVERLAY_DROPDOWN, OVERLAY_INPUT, OVERLAY_TOOLBAR } from "@/constants/overlayStyles";
 import { useStationStore } from "@/stores/useStationStore";
 import type { Station } from "@/types/station";
 import type { TransferMap } from "@/utils/transferStation";
@@ -66,8 +62,7 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 			}
 			if (e.key === "Enter") {
 				e.preventDefault();
-				const target =
-					highlightIndex >= 0 ? searchResults[highlightIndex] : searchResults[0];
+				const target = highlightIndex >= 0 ? searchResults[highlightIndex] : searchResults[0];
 				if (target !== undefined) {
 					handleSelect(target);
 				}
@@ -100,9 +95,7 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 					<line x1="21" y1="21" x2="16.65" y2="16.65" />
 				</svg>
 				역 검색
-				<kbd className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-xs text-gray-500">
-					/
-				</kbd>
+				<kbd className="ml-1 rounded bg-white/10 px-1.5 py-0.5 text-xs text-gray-500">/</kbd>
 			</button>
 		);
 	}
@@ -120,13 +113,13 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 			/>
 
 			{searchResults.length > 0 && (
-				<ul className={`absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto ${OVERLAY_DROPDOWN} py-1`}>
+				<ul
+					className={`absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto ${OVERLAY_DROPDOWN} py-1`}
+				>
 					{searchResults.map((station, idx) => {
 						const transferLines = transferMap.get(station.name);
 						const lines =
-							transferLines !== undefined
-								? transferLines.map((s) => s.line)
-								: [station.line];
+							transferLines !== undefined ? transferLines.map((s) => s.line) : [station.line];
 
 						return (
 							<li key={station.id}>
@@ -153,7 +146,9 @@ export function StationSearch({ transferMap, onSelect }: StationSearchProps) {
 			)}
 
 			{searchQuery.trim() !== "" && searchResults.length === 0 && (
-				<div className={`absolute top-full right-0 left-0 z-50 mt-1 ${OVERLAY_DROPDOWN} px-3 py-3 text-center text-sm text-gray-500`}>
+				<div
+					className={`absolute top-full right-0 left-0 z-50 mt-1 ${OVERLAY_DROPDOWN} px-3 py-3 text-center text-sm text-gray-500`}
+				>
 					검색 결과 없음
 				</div>
 			)}

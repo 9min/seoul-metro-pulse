@@ -26,9 +26,7 @@ export function StationPanel() {
 		transferGroup !== undefined ? transferGroup.map((s) => s.line) : [selectedStation.line];
 	// 같은 이름 역의 모든 ID (환승역이면 여러 개)
 	const allStationIds =
-		transferGroup !== undefined
-			? transferGroup.map((s) => s.id)
-			: [selectedStation.id];
+		transferGroup !== undefined ? transferGroup.map((s) => s.id) : [selectedStation.id];
 	const stationIdSet = new Set(allStationIds);
 
 	const approachingTrains = interpolatedTrains
@@ -41,7 +39,9 @@ export function StationPanel() {
 			{/* 외부 영역 클릭 시 패널 닫기 */}
 			{/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: 백드롭은 마우스 전용 */}
 			<div className="pointer-events-auto absolute inset-0" onClick={() => selectStation(null)} />
-			<div className={`pointer-events-auto absolute right-4 bottom-4 min-w-[240px] ${OVERLAY_PANEL} p-4`}>
+			<div
+				className={`pointer-events-auto absolute right-4 bottom-4 min-w-[240px] ${OVERLAY_PANEL} p-4`}
+			>
 				<div className="mb-3 flex items-start justify-between gap-2">
 					<h2 className="text-lg font-bold text-white">{selectedStation.name}</h2>
 					<IconButton onClick={() => selectStation(null)} label="패널 닫기">

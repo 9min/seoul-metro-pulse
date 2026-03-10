@@ -150,9 +150,7 @@ export function drawAllStations(
 		}
 
 		const lines = isTransfer ? transferLines.map((s) => s.line) : [];
-		const baseRadius = isTransfer
-			? STATION_RADIUS * TRANSFER_RADIUS_SCALE
-			: STATION_RADIUS;
+		const baseRadius = isTransfer ? STATION_RADIUS * TRANSFER_RADIUS_SCALE : STATION_RADIUS;
 		const hoverRadius = isTransfer
 			? STATION_RADIUS_HOVER * TRANSFER_RADIUS_SCALE
 			: STATION_RADIUS_HOVER;

@@ -14,10 +14,7 @@ import {
 } from "@/utils/stationNameResolver";
 
 /** 역명을 station ID로 매핑하여 유효한 열차만 반환한다 */
-function resolveTrains(
-	rawTrains: TrainPosition[],
-	nameMap: Map<string, string>,
-): TrainPosition[] {
+function resolveTrains(rawTrains: TrainPosition[], nameMap: Map<string, string>): TrainPosition[] {
 	const resolved: TrainPosition[] = [];
 	for (const train of rawTrains) {
 		const stationId = resolveStationId(nameMap, train.line, train.stationName);

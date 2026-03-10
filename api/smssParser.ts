@@ -107,9 +107,7 @@ async function fetchSmssLine(line: number): Promise<SmssTrainRaw[]> {
 export async function fetchSmssTrains(lines: number[]): Promise<SmssTrainRaw[]> {
 	const validLines = lines.filter((l) => l >= 1 && l <= 8);
 
-	const results = await Promise.allSettled(
-		validLines.map((l) => fetchSmssLine(l)),
-	);
+	const results = await Promise.allSettled(validLines.map((l) => fetchSmssLine(l)));
 
 	const allTrains: SmssTrainRaw[] = [];
 	for (const result of results) {

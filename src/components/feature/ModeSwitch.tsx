@@ -46,9 +46,7 @@ export function ModeSwitch() {
 				type="button"
 				onClick={() => handleSwitch("live")}
 				className={`flex-1 cursor-pointer rounded-md px-3 py-1.5 text-center text-xs font-semibold transition-all ${
-					mode === "live"
-						? "bg-green-600 text-white shadow-sm"
-						: "text-gray-400 hover:text-white"
+					mode === "live" ? "bg-green-600 text-white shadow-sm" : "text-gray-400 hover:text-white"
 				}`}
 			>
 				실시간 운행

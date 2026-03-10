@@ -54,9 +54,7 @@ function RouteDropdown({
 			{filtered.map((station, idx) => {
 				const transferLines = transferMap.get(station.name);
 				const lines =
-					transferLines !== undefined
-						? transferLines.map((s) => s.line)
-						: [station.line];
+					transferLines !== undefined ? transferLines.map((s) => s.line) : [station.line];
 
 				return (
 					<li key={station.id}>
@@ -64,9 +62,7 @@ function RouteDropdown({
 							type="button"
 							onClick={() => onSelect(station)}
 							className={`flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-								idx === highlightIndex
-									? "bg-white/10 text-white"
-									: "text-gray-300 hover:bg-white/5"
+								idx === highlightIndex ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/5"
 							}`}
 						>
 							<span className="flex-1">{station.name}</span>
@@ -88,10 +84,7 @@ function RouteDropdown({
  * 탭으로 "검색"/"경로" 모드를 전환한다.
  * `/` 키 → 검색 탭, `R` 키 → 경로 탭.
  */
-export function SearchRoutePanel({
-	transferMap,
-	onStationSelect,
-}: SearchRoutePanelProps) {
+export function SearchRoutePanel({ transferMap, onStationSelect }: SearchRoutePanelProps) {
 	// 검색 상태
 	const isSearchOpen = useStationStore((s) => s.isSearchOpen);
 	const searchQuery = useStationStore((s) => s.searchQuery);
@@ -131,11 +124,7 @@ export function SearchRoutePanel({
 	const toFiltered = activeInput === "to" ? filterStations(toQuery, stations) : [];
 
 	// 현재 활성 탭 결정
-	const activeTab: TabMode | null = isSearchOpen
-		? "search"
-		: isRouteMode
-			? "route"
-			: null;
+	const activeTab: TabMode | null = isSearchOpen ? "search" : isRouteMode ? "route" : null;
 
 	// 검색 탭 열릴 때 포커스
 	useEffect(() => {
@@ -201,9 +190,7 @@ export function SearchRoutePanel({
 			}
 			if (e.key === "ArrowDown") {
 				e.preventDefault();
-				setHighlightIndex((prev) =>
-					Math.min(prev + 1, searchResults.length - 1),
-				);
+				setHighlightIndex((prev) => Math.min(prev + 1, searchResults.length - 1));
 				return;
 			}
 			if (e.key === "ArrowUp") {
@@ -213,10 +200,7 @@ export function SearchRoutePanel({
 			}
 			if (e.key === "Enter") {
 				e.preventDefault();
-				const target =
-					highlightIndex >= 0
-						? searchResults[highlightIndex]
-						: searchResults[0];
+				const target = highlightIndex >= 0 ? searchResults[highlightIndex] : searchResults[0];
 				if (target !== undefined) {
 					handleSearchSelect(target);
 				}
@@ -302,9 +286,7 @@ export function SearchRoutePanel({
 						<line x1="21" y1="21" x2="16.65" y2="16.65" />
 					</svg>
 					검색
-					<kbd className="ml-0.5 rounded bg-white/10 px-1.5 py-0.5 text-xs text-gray-500">
-						/
-					</kbd>
+					<kbd className="ml-0.5 rounded bg-white/10 px-1.5 py-0.5 text-xs text-gray-500">/</kbd>
 				</button>
 				<button
 					type="button"
@@ -328,9 +310,7 @@ export function SearchRoutePanel({
 						<polyline points="9 22 9 12 15 12 15 22" />
 					</svg>
 					경로
-					<kbd className="ml-0.5 rounded bg-white/10 px-1.5 py-0.5 text-xs text-gray-500">
-						R
-					</kbd>
+					<kbd className="ml-0.5 rounded bg-white/10 px-1.5 py-0.5 text-xs text-gray-500">R</kbd>
 				</button>
 			</div>
 		);
@@ -344,9 +324,7 @@ export function SearchRoutePanel({
 					type="button"
 					onClick={() => switchTab("search")}
 					className={`flex-1 cursor-pointer px-4 py-2.5 text-center text-xs font-semibold transition-colors ${
-						activeTab === "search"
-							? "text-white"
-							: "text-gray-500 hover:text-gray-300"
+						activeTab === "search" ? "text-white" : "text-gray-500 hover:text-gray-300"
 					}`}
 				>
 					<span className="flex items-center justify-center gap-1.5">
@@ -375,9 +353,7 @@ export function SearchRoutePanel({
 					type="button"
 					onClick={() => switchTab("route")}
 					className={`flex-1 cursor-pointer px-4 py-2.5 text-center text-xs font-semibold transition-colors ${
-						activeTab === "route"
-							? "text-white"
-							: "text-gray-500 hover:text-gray-300"
+						activeTab === "route" ? "text-white" : "text-gray-500 hover:text-gray-300"
 					}`}
 				>
 					<span className="flex items-center justify-center gap-1.5">
@@ -446,36 +422,25 @@ export function SearchRoutePanel({
 							className={`absolute right-3 left-3 z-50 mt-1 max-h-72 overflow-y-auto ${OVERLAY_DROPDOWN} py-1`}
 						>
 							{searchResults.map((station, idx) => {
-								const transferLines = transferMap.get(
-									station.name,
-								);
+								const transferLines = transferMap.get(station.name);
 								const lines =
-									transferLines !== undefined
-										? transferLines.map((s) => s.line)
-										: [station.line];
+									transferLines !== undefined ? transferLines.map((s) => s.line) : [station.line];
 
 								return (
 									<li key={station.id}>
 										<button
 											type="button"
-											onClick={() =>
-												handleSearchSelect(station)
-											}
+											onClick={() => handleSearchSelect(station)}
 											className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors ${
 												idx === highlightIndex
 													? "bg-white/10 text-white"
 													: "text-gray-300 hover:bg-white/5"
 											}`}
 										>
-											<span className="flex-1">
-												{station.name}
-											</span>
+											<span className="flex-1">{station.name}</span>
 											<span className="flex gap-1">
 												{lines.map((line) => (
-													<Badge
-														key={line}
-														line={line}
-													/>
+													<Badge key={line} line={line} />
 												))}
 											</span>
 										</button>
@@ -485,23 +450,20 @@ export function SearchRoutePanel({
 						</ul>
 					)}
 
-					{searchQuery.trim() !== "" &&
-						searchResults.length === 0 && (
-							<div
-								className={`absolute right-3 left-3 z-50 mt-1 ${OVERLAY_DROPDOWN} px-3 py-3 text-center text-sm text-gray-500`}
-							>
-								검색 결과 없음
-							</div>
-						)}
+					{searchQuery.trim() !== "" && searchResults.length === 0 && (
+						<div
+							className={`absolute right-3 left-3 z-50 mt-1 ${OVERLAY_DROPDOWN} px-3 py-3 text-center text-sm text-gray-500`}
+						>
+							검색 결과 없음
+						</div>
+					)}
 				</div>
 			)}
 
 			{/* 경로 탭 */}
 			{activeTab === "route" && (
 				<div className="p-3">
-					<p className="mb-2 text-xs text-gray-500">
-						출발역과 도착역을 입력하세요
-					</p>
+					<p className="mb-2 text-xs text-gray-500">출발역과 도착역을 입력하세요</p>
 
 					{/* 출발역 */}
 					<div className="relative mb-2">
@@ -562,16 +524,13 @@ export function SearchRoutePanel({
 					</div>
 
 					<p className="mb-2 text-xs text-gray-600">
-						지도에서 역 클릭으로도 설정 가능 (첫 클릭=출발, 두
-						번째=도착)
+						지도에서 역 클릭으로도 설정 가능 (첫 클릭=출발, 두 번째=도착)
 					</p>
 
 					{/* 경로 결과 */}
 					{route !== null && route.length > 0 && (
 						<div className={`${OVERLAY_RESULT} p-3`}>
-							<span className="text-sm font-semibold text-white">
-								{route.length}개역
-							</span>
+							<span className="text-sm font-semibold text-white">{route.length}개역</span>
 							{transferDetails.length > 0 && (
 								<div className="mt-2 flex flex-col gap-1.5">
 									{transferDetails.map((td) => (
@@ -590,13 +549,9 @@ export function SearchRoutePanel({
 						</div>
 					)}
 
-					{fromStation !== null &&
-						toStation !== null &&
-						(route === null || route.length === 0) && (
-							<p className="text-xs text-red-400/80">
-								경로를 찾을 수 없습니다
-							</p>
-						)}
+					{fromStation !== null && toStation !== null && (route === null || route.length === 0) && (
+						<p className="text-xs text-red-400/80">경로를 찾을 수 없습니다</p>
+					)}
 				</div>
 			)}
 		</div>

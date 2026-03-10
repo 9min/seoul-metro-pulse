@@ -1,7 +1,7 @@
 import type { Container } from "pixi.js";
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_SPEED } from "@/constants/mapConfig";
-import type { ScreenCoord } from "@/types/map";
 import { useMapStore } from "@/stores/useMapStore";
+import type { ScreenCoord } from "@/types/map";
 import { easeInOutCubic } from "@/utils/easing";
 
 interface ZoomPanOptions {

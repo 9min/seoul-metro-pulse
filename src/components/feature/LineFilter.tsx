@@ -59,8 +59,7 @@ export function LineFilter() {
 		removeInactiveLines(enabledLines);
 	}, [mode, rawPositions, enabledLines, removeInactiveLines]);
 
-	const allActive =
-		enabledLines.size > 0 && [...enabledLines].every((l) => activeLines.has(l));
+	const allActive = enabledLines.size > 0 && [...enabledLines].every((l) => activeLines.has(l));
 
 	const handleToggleAll = useCallback(() => {
 		setAllLinesActive(!allActive, enabledLines);
@@ -80,7 +79,11 @@ export function LineFilter() {
 							type="button"
 							disabled={isOff}
 							onClick={() => toggleLine(line, enabledLines)}
-							title={isOff ? `${line}호선: 운행 열차 없음` : `${line}호선${trainCounts !== null ? `: ${count}대` : ""}`}
+							title={
+								isOff
+									? `${line}호선: 운행 열차 없음`
+									: `${line}호선${trainCounts !== null ? `: ${count}대` : ""}`
+							}
 							className="relative h-8 w-8 rounded-full text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-15"
 							style={{
 								backgroundColor: colorHex,

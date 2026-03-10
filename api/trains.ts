@@ -1,10 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { fetchSmssTrains } from "./smssParser.js";
 
-export default async function handler(
-	req: VercelRequest,
-	res: VercelResponse,
-): Promise<void> {
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
 	if (req.method !== "POST") {
 		res.status(405).json({ error: "POST만 허용됩니다" });
 		return;
