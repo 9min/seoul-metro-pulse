@@ -1,7 +1,13 @@
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { IconButton } from "@/components/ui/IconButton";
+import stationsData from "@/data/stations.json";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
+import type { Station } from "@/types/station";
+import { buildTransferMap } from "@/utils/transferStation";
+
+const ALL_STATIONS = stationsData as Station[];
 
 /** 역 클릭 시 우하단에 표시되는 정보 패널 */
 export function StationPanel() {
@@ -9,10 +15,23 @@ export function StationPanel() {
 	const selectStation = useStationStore((state) => state.selectStation);
 	const interpolatedTrains = useTrainStore((state) => state.interpolatedTrains);
 
+	const transferMap = useMemo(() => buildTransferMap(ALL_STATIONS), []);
+
 	if (selectedStation === null) return null;
 
+	// 환승역이면 같은 이름의 모든 호선 가져오기
+	const transferGroup = transferMap.get(selectedStation.name);
+	const allLines =
+		transferGroup !== undefined ? transferGroup.map((s) => s.line) : [selectedStation.line];
+	// 같은 이름 역의 모든 ID (환승역이면 여러 개)
+	const allStationIds =
+		transferGroup !== undefined
+			? transferGroup.map((s) => s.id)
+			: [selectedStation.id];
+	const stationIdSet = new Set(allStationIds);
+
 	const approachingTrains = interpolatedTrains
-		.filter((t) => t.toStationId === selectedStation.id)
+		.filter((t) => stationIdSet.has(t.toStationId))
 		.sort((a, b) => b.progress - a.progress)
 		.slice(0, 5);
 
@@ -43,7 +62,9 @@ export function StationPanel() {
 					</IconButton>
 				</div>
 				<div className="flex items-center gap-2">
-					<Badge line={selectedStation.line} />
+					{allLines.map((line) => (
+						<Badge key={line} line={line} />
+					))}
 				</div>
 				<div className="mt-3 text-xs text-gray-400">
 					<span>ID: {selectedStation.id}</span>

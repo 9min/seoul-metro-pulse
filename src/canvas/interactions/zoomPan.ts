@@ -1,6 +1,7 @@
 import type { Container } from "pixi.js";
 import { ZOOM_MAX, ZOOM_MIN, ZOOM_SPEED } from "@/constants/mapConfig";
 import { useMapStore } from "@/stores/useMapStore";
+import { easeInOutCubic } from "@/utils/easing";
 
 interface ZoomPanOptions {
 	viewport: Container;
@@ -82,4 +83,54 @@ export function setupZoomPan({ viewport, canvas }: ZoomPanOptions): () => void {
 		canvas.removeEventListener("pointerup", onPointerUp);
 		canvas.removeEventListener("pointercancel", onPointerUp);
 	};
+}
+
+/** flyToStation 애니메이션 지속 시간 (ms) */
+const FLY_DURATION_MS = 800;
+
+/** 목표 줌 레벨 */
+const FLY_TARGET_SCALE = 2.0;
+
+/**
+ * 카메라를 특정 월드 좌표로 부드럽게 이동한다.
+ * @param viewport - PixiJS viewport Container
+ * @param targetX - 목표 월드 X 좌표
+ * @param targetY - 목표 월드 Y 좌표
+ * @param targetScale - 목표 줌 배율 (기본 2.0)
+ */
+export function flyToStation(
+	viewport: Container,
+	targetX: number,
+	targetY: number,
+	targetScale = FLY_TARGET_SCALE,
+): void {
+	const startX = viewport.x;
+	const startY = viewport.y;
+	const startScale = viewport.scale.x;
+	const startTime = performance.now();
+
+	const endX = window.innerWidth / 2 - targetX * targetScale;
+	const endY = window.innerHeight / 2 - targetY * targetScale;
+
+	const { setScale, setOffset } = useMapStore.getState();
+
+	const animate = (): void => {
+		const elapsed = performance.now() - startTime;
+		const t = Math.min(elapsed / FLY_DURATION_MS, 1);
+		const eased = easeInOutCubic(t);
+
+		const currentScale = startScale + (targetScale - startScale) * eased;
+		viewport.scale.set(currentScale);
+		viewport.x = startX + (endX - startX) * eased;
+		viewport.y = startY + (endY - startY) * eased;
+
+		setScale(currentScale);
+		setOffset(viewport.x, viewport.y);
+
+		if (t < 1) {
+			requestAnimationFrame(animate);
+		}
+	};
+
+	requestAnimationFrame(animate);
 }
