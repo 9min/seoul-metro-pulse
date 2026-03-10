@@ -85,7 +85,7 @@ describe("fetchAllTrains", () => {
 		vi.unstubAllEnvs();
 	});
 
-	it("API 사용량 제한으로 1호선만 호출한다", async () => {
+	it("전달된 호선만 병렬 호출한다", async () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn().mockResolvedValue({
@@ -94,8 +94,8 @@ describe("fetchAllTrains", () => {
 			}),
 		);
 
-		const trains = await fetchAllTrains();
-		// 1호선만 × 2개 = 2개
+		const trains = await fetchAllTrains([1]);
+		// 1호선 × 2개 = 2개
 		expect(trains).toHaveLength(2);
 	});
 });

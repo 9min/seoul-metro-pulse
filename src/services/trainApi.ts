@@ -107,12 +107,9 @@ export async function fetchLineTrains(lineNumber: number): Promise<TrainPosition
 	}
 }
 
-/** 실시간운행 모드에서 API 호출 대상 호선 (API 사용량 제한으로 1호선만) */
-const LIVE_API_LINES = [1];
-
 /** 실시간 열차 위치를 병렬로 가져온다 */
-export async function fetchAllTrains(): Promise<TrainPosition[]> {
-	const results = await Promise.allSettled(LIVE_API_LINES.map((n) => fetchLineTrains(n)));
+export async function fetchAllTrains(lines: number[]): Promise<TrainPosition[]> {
+	const results = await Promise.allSettled(lines.map((n) => fetchLineTrains(n)));
 
 	const allTrains: TrainPosition[] = [];
 	for (const result of results) {

@@ -27,6 +27,7 @@ interface TrainState {
 	setFetchError: (error: string | null) => void;
 	setPollingActive: (active: boolean) => void;
 	selectTrain: (trainNo: string | null) => void;
+	clearPositions: () => void;
 }
 
 export const useTrainStore = create<TrainState>((set, get) => ({
@@ -80,4 +81,11 @@ export const useTrainStore = create<TrainState>((set, get) => ({
 	setFetchError: (error) => set({ fetchError: error }),
 	setPollingActive: (active) => set({ isPollingActive: active }),
 	selectTrain: (trainNo) => set({ selectedTrainNo: trainNo }),
+	clearPositions: () =>
+		set({
+			rawPositions: [],
+			interpolatedTrains: [],
+			prevPollMap: new Map(),
+			lastFetchedAt: null,
+		}),
 }));

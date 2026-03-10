@@ -46,10 +46,6 @@ export function ModeSwitch() {
 		syncLinesForMode(newMode);
 		setMode(newMode);
 
-		// 실시간운행 전환 시 API 사용량 제한 토스트 표시
-		if (newMode === "live") {
-			useMapStore.setState({ apiLimitToast: true });
-		}
 	};
 
 	return (
@@ -57,7 +53,7 @@ export function ModeSwitch() {
 			<button
 				type="button"
 				onClick={() => handleSwitch("simulation")}
-				className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-semibold transition-all ${
+				className={`flex-1 cursor-pointer rounded-md px-3 py-1.5 text-center text-xs font-semibold transition-all ${
 					mode === "simulation"
 						? "bg-blue-600 text-white shadow-sm"
 						: "text-gray-400 hover:text-white"
@@ -70,7 +66,7 @@ export function ModeSwitch() {
 				disabled={!liveEnabled}
 				title={liveEnabled ? undefined : "실시간 운행은 07:00~24:00에만 가능합니다"}
 				onClick={() => handleSwitch("live")}
-				className={`flex-1 rounded-md px-3 py-1.5 text-center text-xs font-semibold transition-all ${
+				className={`flex-1 cursor-pointer rounded-md px-3 py-1.5 text-center text-xs font-semibold transition-all ${
 					!liveEnabled
 						? "cursor-not-allowed text-gray-600"
 						: mode === "live"

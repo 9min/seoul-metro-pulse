@@ -97,11 +97,11 @@ export const CONGESTION_LINE_WIDTH_FACTOR = 2.5;
 /** 성능 모니터: 업데이트 주기 (ms) */
 export const PERF_UPDATE_INTERVAL_MS = 250;
 
-/** 시뮬레이션: 일반 역 정차 틱 수 (2틱 = 6초) */
-export const SIM_DWELL_TICKS = 2;
+/** 시뮬레이션: 일반 역 정차 틱 수 (1틱 = 3초) */
+export const SIM_DWELL_TICKS = 1;
 
-/** 시뮬레이션: 종점 정차 틱 수 (4틱 = 12초, 방향 전환 대기) */
-export const SIM_TERMINAL_DWELL_TICKS = 4;
+/** 시뮬레이션: 종점 정차 틱 수 (2틱 = 6초, 방향 전환 대기) */
+export const SIM_TERMINAL_DWELL_TICKS = 2;
 
 /** 열차 애니메이션 최대 허용 거리 (px) — 초과 시 즉시 텔레포트 */
 export const MAX_TRAIN_ANIM_DIST = 500;

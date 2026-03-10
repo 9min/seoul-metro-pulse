@@ -3,8 +3,8 @@ import type { AppMode } from "@/stores/useSimulationStore";
 
 const ALL_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
-/** 실시간운행 모드에서 활성화된 노선 (나머지는 추후 오픈 예정) */
-const LIVE_ENABLED_LINES = new Set([1]);
+/** 실시간운행 모드에서 활성화 가능한 노선 (모든 호선 지원) */
+const LIVE_ENABLED_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
 /** 모드에 따른 활성화 가능 노선을 반환한다 */
 export function getEnabledLines(mode: AppMode): Set<number> {
@@ -18,14 +18,12 @@ interface MapState {
 	isDragging: boolean;
 	activeLines: Set<number>;
 	heatmapEnabled: boolean;
-	/** API 사용량 제한 토스트 표시 여부 */
-	apiLimitToast: boolean;
-	setApiLimitToast: (show: boolean) => void;
 	setScale: (scale: number) => void;
 	setOffset: (x: number, y: number) => void;
 	setIsDragging: (isDragging: boolean) => void;
 	toggleLine: (line: number, enabledLines: Set<number>) => void;
 	setAllLinesActive: (active: boolean, enabledLines: Set<number>) => void;
+	selectSingleLine: (line: number) => void;
 	syncLinesForMode: (mode: AppMode) => void;
 	toggleHeatmap: () => void;
 }
@@ -37,8 +35,6 @@ export const useMapStore = create<MapState>((set) => ({
 	isDragging: false,
 	activeLines: new Set(ALL_LINES),
 	heatmapEnabled: false,
-	apiLimitToast: false,
-	setApiLimitToast: (show) => set({ apiLimitToast: show }),
 	setScale: (scale) => set({ scale }),
 	setOffset: (offsetX, offsetY) => set({ offsetX, offsetY }),
 	setIsDragging: (isDragging) => set({ isDragging }),
@@ -55,6 +51,8 @@ export const useMapStore = create<MapState>((set) => ({
 		}),
 	setAllLinesActive: (active, enabledLines) =>
 		set({ activeLines: active ? new Set(enabledLines) : new Set() }),
-	syncLinesForMode: (mode) => set({ activeLines: new Set(getEnabledLines(mode)) }),
+	selectSingleLine: (line) => set({ activeLines: new Set([line]) }),
+	syncLinesForMode: (mode) =>
+		set({ activeLines: mode === "live" ? new Set([1]) : new Set(ALL_LINES) }),
 	toggleHeatmap: () => set((state) => ({ heatmapEnabled: !state.heatmapEnabled })),
 }));
