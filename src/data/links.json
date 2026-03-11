@@ -271,6 +271,7 @@
 	{ "source": "L6S05", "target": "L6S06", "line": 6 },
 	{ "source": "L6S06", "target": "L6S07", "line": 6 },
 	{ "source": "L6S07", "target": "L6S08", "line": 6 },
+	{ "source": "L6S08", "target": "L6S01", "line": 6 },
 	{ "source": "L6S08", "target": "L6S09", "line": 6 },
 	{ "source": "L6S09", "target": "L6S10", "line": 6 },
 	{ "source": "L6S10", "target": "L6S11", "line": 6 },
