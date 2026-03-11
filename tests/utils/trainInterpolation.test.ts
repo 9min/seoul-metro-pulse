@@ -116,6 +116,26 @@ describe("interpolateTrainPosition", () => {
 		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP);
 		expect(result?.trackAngle).toBe(0);
 	});
+
+	it("출발 상태에서도 stationX/Y는 현재역 좌표이다", () => {
+		// BASE_TRAIN: S02(200,300), 상행 출발 → x/y = S01(100,200), stationX/Y = S02(200,300)
+		const train: TrainPosition = { ...BASE_TRAIN, status: "출발" };
+		const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
+		expect(result?.x).toBe(100); // 다음역(S01) 좌표
+		expect(result?.y).toBe(200);
+		expect(result?.stationX).toBe(200); // 현재역(S02) 좌표
+		expect(result?.stationY).toBe(300);
+	});
+
+	it("진입/도착 상태에서 stationX/Y와 x/y는 동일하다", () => {
+		// 진입/도착: x/y = 현재역 좌표, stationX/Y도 현재역 좌표
+		for (const status of ["진입", "도착"] as const) {
+			const train: TrainPosition = { ...BASE_TRAIN, status };
+			const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
+			expect(result?.stationX).toBe(result?.x);
+			expect(result?.stationY).toBe(result?.y);
+		}
+	});
 });
 
 describe("trackAngle — 상행/하행 방향", () => {

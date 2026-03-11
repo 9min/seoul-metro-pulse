@@ -30,6 +30,8 @@ const MOCK_TRAIN: InterpolatedTrain = {
 	line: 1,
 	x: 100,
 	y: 200,
+	stationX: 100,
+	stationY: 200,
 	direction: "상행",
 	progress: 0,
 	fromStationId: "S01",
@@ -237,5 +239,66 @@ describe("TrainAnimator", () => {
 		expect(state?.startY).toBe(200);
 		expect(state?.targetX).toBe(200);
 		expect(state?.targetY).toBe(200);
+	});
+
+	it("역이 변경되면 startX/Y가 stationX/Y로 재설정된다", () => {
+		// S01에 열차 배치 후 S02로 역 변경
+		animator.setTargets([MOCK_TRAIN]); // currentX=100, currentY=200
+
+		const changedStationTrain: InterpolatedTrain = {
+			...MOCK_TRAIN,
+			x: 300,
+			y: 400,
+			stationX: 200,
+			stationY: 300,
+			fromStationId: "S02",
+			toStationId: "S03",
+		};
+		animator.setTargets([changedStationTrain], 9000);
+
+		const state = animator.getTrainState("1001");
+		// fromStationId 변경(S01→S02) → startX/Y = stationX/Y (currentX/Y 아님)
+		expect(state?.startX).toBe(200);
+		expect(state?.startY).toBe(300);
+		expect(state?.targetX).toBe(300);
+		expect(state?.targetY).toBe(400);
+	});
+
+	it("역이 동일하면 startX/Y가 currentX/Y로 유지된다", () => {
+		// 같은 fromStationId로 갱신 → currentX/Y 사용
+		animator.setTargets([MOCK_TRAIN]); // currentX=100, currentY=200
+
+		const samestationTrain: InterpolatedTrain = {
+			...MOCK_TRAIN,
+			x: 150,
+			y: 250,
+			stationX: 100, // 같은 역
+			stationY: 200,
+			fromStationId: "S01", // 동일
+		};
+		animator.setTargets([samestationTrain], 9000);
+
+		const state = animator.getTrainState("1001");
+		// fromStationId 동일 → startX/Y = currentX/Y
+		expect(state?.startX).toBe(100);
+		expect(state?.startY).toBe(200);
+	});
+
+	it("신규 열차 출발 상태에서 currentX/Y는 stationX/Y이다 (다음역 아님)", () => {
+		// 출발 상태: x/y = 다음역, stationX/Y = 현재역
+		const departureTrain: InterpolatedTrain = {
+			...MOCK_TRAIN,
+			x: 200, // 다음역 좌표
+			y: 300,
+			stationX: 100, // 현재역 좌표
+			stationY: 200,
+		};
+		animator.setTargets([departureTrain]);
+
+		const state = animator.getTrainState("1001");
+		// 신규 열차는 stationX/Y에 배치되어야 함
+		expect(state?.currentX).toBe(100);
+		expect(state?.currentY).toBe(200);
+		expect(state?.duration).toBe(0);
 	});
 });
