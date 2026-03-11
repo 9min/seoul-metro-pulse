@@ -23,8 +23,10 @@ function updateExistingTrain(
 	animDuration: number,
 	adjacencyMap?: Map<string, AdjacencyInfo>,
 ): void {
-	existing.startX = existing.currentX;
-	existing.startY = existing.currentY;
+	// 역이 바뀌었으면 물리적 역 좌표로 시작점 재설정 (라인 이탈 방지)
+	const stationChanged = existing.fromStationId !== train.fromStationId;
+	existing.startX = stationChanged ? train.stationX : existing.currentX;
+	existing.startY = stationChanged ? train.stationY : existing.currentY;
 	existing.targetX = train.x;
 	existing.targetY = train.y;
 	existing.startTime = now;
@@ -71,20 +73,21 @@ function updateExistingTrain(
 
 /** 신규 열차의 애니메이션 상태를 생성한다 */
 function createNewTrainState(train: InterpolatedTrain, now: number): AnimatedTrainState {
+	// 출발 상태여도 물리적 역 좌표에 배치 (다음역 좌표 사용 시 라인 이탈 방지)
 	const path: PathPoint[] = [
-		{ x: train.x, y: train.y },
-		{ x: train.x, y: train.y },
+		{ x: train.stationX, y: train.stationY },
+		{ x: train.stationX, y: train.stationY },
 	];
 	return {
 		trainNo: train.trainNo,
 		line: train.line,
 		direction: train.direction,
-		startX: train.x,
-		startY: train.y,
-		targetX: train.x,
-		targetY: train.y,
-		currentX: train.x,
-		currentY: train.y,
+		startX: train.stationX,
+		startY: train.stationY,
+		targetX: train.stationX,
+		targetY: train.stationY,
+		currentX: train.stationX,
+		currentY: train.stationY,
 		startTime: now,
 		duration: 0,
 		fromStationId: train.fromStationId,
