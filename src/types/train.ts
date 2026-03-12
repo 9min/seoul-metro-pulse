@@ -46,6 +46,10 @@ export interface InterpolatedTrain {
 	nextY: number;
 	/** 트랙 방향 각도 (라디안). 현재역→다음역 방향 */
 	trackAngle: number;
+	/** 시뮬레이션 전용: 열차 속도 배율 (0.85~1.15). 애니메이터 속도 동기화용 */
+	speedFactor?: number;
+	/** 시뮬레이션 전용: 구간 내 현재 진행률 (0~1). 신규 열차 초기 배치에만 사용 */
+	simProgress?: number;
 }
 
 /** 애니메이션 중인 열차 상태 (TrainAnimator 내부용) */
@@ -80,4 +84,6 @@ export interface AnimatedTrainState {
 	fadeOutStartedAt?: number;
 	/** 스냅 발생 시 true — updateTrailQueues가 큐를 비우고 즉시 false로 초기화 */
 	trailDirty?: boolean;
+	/** 열차 속도 배율 (0.85~1.15). 시뮬레이션 모드에서 사용, 실시간 모드는 1.0 */
+	speedFactor: number;
 }

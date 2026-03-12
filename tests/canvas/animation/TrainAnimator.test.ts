@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TrainAnimator } from "@/canvas/animation/TrainAnimator";
 import type { InterpolatedTrain } from "@/types/train";
 
+/** TrainAnimator 내부와 동일한 easeInOut — 테스트 기댓값 계산용 */
+function easeInOut(t: number): number {
+	return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
 // PixiJS Container 모킹
 function createMockContainer() {
 	const children: { x: number; y: number; visible: boolean }[] = [];
@@ -388,6 +393,141 @@ describe("TrainAnimator", () => {
 		animator.setTargets([reversed]);
 		const state = animator.getTrainState("1001");
 		expect(state?.direction).toBe("하행");
+	});
+
+	// ── speedFactor 동기화 (시뮬레이션 모드 속도 일치) ─────────────────────
+
+	it("같은 구간 출발 재폴링 시 progress가 역방향으로 점프하지 않는다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]);
+		const state = animator.getTrainState("1001");
+		// 애니메이터가 progress=0.5까지 전진한 상황
+		if (state) state.progress = 0.5;
+
+		// 재폴링 시 progress가 0.5 미만으로 내려가지 않아야 한다
+		animator.setTargets([MOCK_TRAIN_DEPART]);
+		const stateAfter = animator.getTrainState("1001");
+		expect(stateAfter?.progress).toBeGreaterThanOrEqual(0.5);
+	});
+
+	it("같은 구간 출발 재폴링 시 progress=1.0에서도 역방향 점프가 없다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]);
+		const state = animator.getTrainState("1001");
+		// 애니메이터가 progress=1.0에 도달한 상황 (구간 완료)
+		if (state) state.progress = 1.0;
+
+		// 재폴링 시 progress가 1.0 미만으로 내려가지 않아야 한다
+		animator.setTargets([MOCK_TRAIN_DEPART]);
+		const stateAfter = animator.getTrainState("1001");
+		expect(stateAfter?.progress).toBe(1.0);
+	});
+
+	it("다음 구간 진행(trainAdvanced+출발) 시 progress=0으로 깔끔하게 시작한다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // S01 출발, toStationId=S00
+
+		const departFromNext: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			stationId: "S00",
+			stationX: 50,
+			stationY: 150,
+			nextStationId: "S_PREV",
+			nextX: 10,
+			nextY: 100,
+		};
+		animator.setTargets([departFromNext]);
+		const state = animator.getTrainState("1001");
+		expect(state?.progress).toBe(0); // 역에서 깔끔하게 시작
+		expect(state?.isMoving).toBe(true);
+	});
+
+	it("speedFactor가 있는 신규 열차 생성 시 speedFactor가 저장된다", () => {
+		const withSpeedFactor: InterpolatedTrain = { ...MOCK_TRAIN_DEPART, speedFactor: 0.9 };
+		animator.setTargets([withSpeedFactor]);
+		const state = animator.getTrainState("1001");
+		expect(state?.speedFactor).toBe(0.9);
+	});
+
+	it("speedFactor 없는 신규 열차는 기본값 1.0으로 생성된다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]);
+		const state = animator.getTrainState("1001");
+		expect(state?.speedFactor).toBe(1.0);
+	});
+
+	it("trainAdvanced+출발 시 speedFactor가 갱신된다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // S01 출발, toStationId=S00
+
+		const departFromNext: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			stationId: "S00",
+			stationX: 50,
+			stationY: 150,
+			nextStationId: "S_PREV",
+			nextX: 10,
+			nextY: 100,
+			speedFactor: 1.1,
+		};
+		animator.setTargets([departFromNext]);
+		const state = animator.getTrainState("1001");
+		expect(state?.speedFactor).toBe(1.1);
+	});
+
+	// ── 신규 열차 simProgress 기반 초기 배치 (시뮬레이션 텔레포트 방지) ─────
+
+	it("simProgress 없는 신규 출발 열차는 progress=0, stationX/Y에서 시작한다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // simProgress 없음
+		const state = animator.getTrainState("1001");
+		expect(state?.progress).toBe(0);
+		expect(state?.currentX).toBe(100); // stationX
+		expect(state?.currentY).toBe(200); // stationY
+	});
+
+	it("simProgress=0.9인 신규 출발 열차는 구간의 90% 위치에서 시작한다", () => {
+		const withSimProgress: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			simProgress: 0.9,
+		};
+		animator.setTargets([withSimProgress]);
+		const state = animator.getTrainState("1001");
+
+		expect(state?.progress).toBe(0.9);
+		// easeInOut(0.9) = 1 - (-2*0.9+2)^2/2 = 1 - (0.2)^2/2 = 1 - 0.02 = 0.98
+		// currentX = 100 + (50-100) * 0.98 = 100 - 49 = 51
+		const t = 1 - (-2 * 0.9 + 2) ** 2 / 2;
+		const expectedX = 100 + (50 - 100) * t;
+		const expectedY = 200 + (150 - 200) * t;
+		expect(state?.currentX).toBeCloseTo(expectedX, 5);
+		expect(state?.currentY).toBeCloseTo(expectedY, 5);
+		expect(state?.isMoving).toBe(true);
+	});
+
+	it("simProgress=0.5인 신규 출발 열차는 구간의 50% 위치에서 시작한다", () => {
+		const withSimProgress: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			simProgress: 0.5,
+		};
+		animator.setTargets([withSimProgress]);
+		const state = animator.getTrainState("1001");
+
+		expect(state?.progress).toBe(0.5);
+		// easeInOut(0.5) = 0.5 (중간점)
+		// currentX = 100 + (50-100) * 0.5 = 75
+		const t = easeInOut(0.5);
+		const expectedX = 100 + (50 - 100) * t;
+		const expectedY = 200 + (150 - 200) * t;
+		expect(state?.currentX).toBeCloseTo(expectedX, 5);
+		expect(state?.currentY).toBeCloseTo(expectedY, 5);
+	});
+
+	it("simProgress가 있어도 도착/진입 신규 열차는 stationX/Y에 배치된다", () => {
+		const arriveWithSim: InterpolatedTrain = {
+			...MOCK_TRAIN_ARRIVE,
+			simProgress: 0.9, // 무시되어야 함
+		};
+		animator.setTargets([arriveWithSim]);
+		const state = animator.getTrainState("1001");
+		expect(state?.progress).toBe(0); // isDepart=false → simP=0
+		expect(state?.currentX).toBe(100); // stationX
+		expect(state?.currentY).toBe(200); // stationY
+		expect(state?.isMoving).toBe(false);
 	});
 
 	// ── fade-out / fade-in ─────────────────────────────────────────────────────

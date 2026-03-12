@@ -42,8 +42,8 @@ export const SEGMENT_TRAVEL_MS = 50_000;
 /** 신규 열차 페이드인 시간 (ms) */
 export const TRAIN_FADEIN_MS = 500;
 
-/** 시뮬레이션 모드 폴링 주기 (ms) — 짧은 주기로 끊김 없는 연속 이동 */
-export const SIMULATION_TICK_MS = 6_000;
+/** 시뮬레이션 모드 폴링 주기 (ms) — 0.5초 주기로 구간 경계 대기 최소화 */
+export const SIMULATION_TICK_MS = 500;
 
 /** 시뮬레이션 모드 노선별 열차 수 (상행 + 하행) — 총 300대 */
 export const SIMULATION_TRAINS_PER_LINE: Record<number, number> = {
@@ -99,12 +99,6 @@ export const CONGESTION_LINE_WIDTH_FACTOR = 2.5;
 
 /** 성능 모니터: 업데이트 주기 (ms) */
 export const PERF_UPDATE_INTERVAL_MS = 250;
-
-/** 시뮬레이션: 일반 역 정차 틱 수 (1틱 = 3초) */
-export const SIM_DWELL_TICKS = 1;
-
-/** 시뮬레이션: 종점 정차 틱 수 (2틱 = 6초, 방향 전환 대기) */
-export const SIM_TERMINAL_DWELL_TICKS = 2;
 
 /** 열차 grace period: 폴링에서 누락되어도 유지할 폴 횟수 */
 export const TRAIN_GRACE_POLL_COUNT = 2;

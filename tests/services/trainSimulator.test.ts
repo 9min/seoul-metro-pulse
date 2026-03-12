@@ -75,24 +75,44 @@ describe("TrainSimulator", () => {
 		}
 	});
 
-	it("역 도착 시 정차한다 — 일부 열차가 역 좌표에 위치한다", () => {
+	it("speedFactor가 [0.85, 1.15] 범위로 반환된다", () => {
 		const sim = new TrainSimulator();
 		sim.init(LINKS);
-
-		const validXs = new Set([100, 200, 300, 400, 500]);
-		let foundAtStation = false;
-
-		// 충분한 틱을 돌려 역 좌표의 열차를 찾는다
-		for (let i = 0; i < 30; i++) {
-			const trains = sim.tick(SCREEN_MAP);
-			const atStation = trains.filter((t) => validXs.has(t.stationX));
-			if (atStation.length > 0) {
-				foundAtStation = true;
-				break;
-			}
+		const trains = sim.tick(SCREEN_MAP);
+		for (const t of trains) {
+			expect(t.speedFactor).toBeDefined();
+			expect(t.speedFactor).toBeGreaterThanOrEqual(0.85);
+			expect(t.speedFactor).toBeLessThanOrEqual(1.15);
 		}
+	});
 
-		expect(foundAtStation).toBe(true);
+	it("모든 열차가 speedFactor를 포함한다", () => {
+		const sim = new TrainSimulator();
+		sim.init(LINKS);
+		const trains = sim.tick(SCREEN_MAP);
+		for (const t of trains) {
+			expect(typeof t.speedFactor).toBe("number");
+		}
+	});
+
+	it("simProgress가 [0, 1) 범위로 반환된다", () => {
+		const sim = new TrainSimulator();
+		sim.init(LINKS);
+		const trains = sim.tick(SCREEN_MAP);
+		for (const t of trains) {
+			expect(t.simProgress).toBeDefined();
+			expect(t.simProgress).toBeGreaterThanOrEqual(0);
+			expect(t.simProgress).toBeLessThan(1);
+		}
+	});
+
+	it("모든 열차가 simProgress를 포함한다", () => {
+		const sim = new TrainSimulator();
+		sim.init(LINKS);
+		const trains = sim.tick(SCREEN_MAP);
+		for (const t of trains) {
+			expect(typeof t.simProgress).toBe("number");
+		}
 	});
 
 	it("정차 중 trackAngle이 유효하다", () => {

@@ -18,7 +18,7 @@ function easeInOut(t: number): number {
  */
 function advanceTrainState(state: AnimatedTrainState, delta: number): void {
 	if (state.isMoving && state.progress < 1) {
-		state.progress = Math.min(1, state.progress + delta / SEGMENT_TRAVEL_MS);
+		state.progress = Math.min(1, state.progress + (delta * state.speedFactor) / SEGMENT_TRAVEL_MS);
 	}
 	const t = easeInOut(state.progress);
 	state.currentX = state.fromX + (state.toX - state.fromX) * t;
@@ -86,25 +86,30 @@ export class TrainAnimator {
 		const existing = this.states.get(train.trainNo);
 
 		if (existing === undefined) {
-			// 신규 열차: 현재 역에 즉시 배치 후 status에 따라 이동 시작
+			// 신규 열차: simProgress 기반 초기 위치 설정 (시뮬레이션 텔레포트 방지)
 			const isDepart = train.status === "출발";
+			const simP = isDepart ? (train.simProgress ?? 0) : 0;
+			const t = easeInOut(simP);
+			const initX = isDepart ? train.stationX + (train.nextX - train.stationX) * t : train.stationX;
+			const initY = isDepart ? train.stationY + (train.nextY - train.stationY) * t : train.stationY;
 			this.states.set(train.trainNo, {
 				trainNo: train.trainNo,
 				line: train.line,
 				direction: train.direction,
-				currentX: train.stationX,
-				currentY: train.stationY,
+				currentX: initX,
+				currentY: initY,
 				stationId: train.stationId,
 				toStationId: train.nextStationId,
 				fromX: train.stationX,
 				fromY: train.stationY,
 				toX: isDepart ? train.nextX : train.stationX,
 				toY: isDepart ? train.nextY : train.stationY,
-				progress: 0,
+				progress: simP,
 				isMoving: isDepart,
 				trackAngle: train.trackAngle,
 				createdAt: now,
 				lastPollAt: now,
+				speedFactor: train.speedFactor ?? 1.0,
 			});
 			return;
 		}
@@ -127,7 +132,7 @@ export class TrainAnimator {
 		if (segmentSame) {
 			// ── 같은 구간 ──────────────────────────────────────────────────────
 			if (isDepart) {
-				// 출발: 목표 좌표 동기화 후 이동 계속 (progress 유지 — 재시작 없음)
+				// 출발: 목표 좌표 동기화 후 이동 계속 (progress 유지 — 역방향 점프 방지)
 				existing.toX = train.nextX;
 				existing.toY = train.nextY;
 				existing.isMoving = true;
@@ -148,7 +153,8 @@ export class TrainAnimator {
 				existing.toY = train.nextY;
 				existing.currentX = train.stationX;
 				existing.currentY = train.stationY;
-				existing.progress = 0;
+				existing.progress = 0; // 역에서 깔끔하게 시작 (simProgress 제거)
+				existing.speedFactor = train.speedFactor ?? 1.0;
 				existing.isMoving = true;
 				existing.trailDirty = true;
 			} else {
@@ -174,6 +180,7 @@ export class TrainAnimator {
 			existing.currentX = train.stationX;
 			existing.currentY = train.stationY;
 			existing.progress = 0;
+			existing.speedFactor = train.speedFactor ?? 1.0;
 			existing.isMoving = isDepart;
 			existing.trailDirty = true;
 		}

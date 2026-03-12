@@ -1,7 +1,5 @@
 import {
 	SEGMENT_TRAVEL_MS,
-	SIM_DWELL_TICKS,
-	SIM_TERMINAL_DWELL_TICKS,
 	SIMULATION_TICK_MS,
 	SIMULATION_TRAINS_PER_LINE,
 } from "@/constants/mapConfig";
@@ -18,8 +16,6 @@ interface SimTrain {
 	segmentIdx: number;
 	/** 현재 구간 내 진행률 (0.0 ~ 1.0) */
 	progress: number;
-	/** 정차 잔여 틱 수. 0이면 이동 중, >0이면 역에 정차 중 */
-	dwellRemaining: number;
 	/** 열차별 속도 배율 (0.85 ~ 1.15). 동기화 방지용 */
 	speedFactor: number;
 }
@@ -136,7 +132,6 @@ export class TrainSimulator {
 					direction: "상행",
 					segmentIdx: Math.floor(totalProgress) % segmentCount,
 					progress: Math.min((totalProgress % 1) + Math.random() * 0.1, 0.99),
-					dwellRemaining: Math.floor(Math.random() * (SIM_DWELL_TICKS + 1)),
 					speedFactor: 0.85 + Math.random() * 0.3,
 				});
 			}
@@ -151,7 +146,6 @@ export class TrainSimulator {
 					direction: "하행",
 					segmentIdx: Math.floor(totalProgress) % segmentCount,
 					progress: Math.min((totalProgress % 1) + Math.random() * 0.1, 0.99),
-					dwellRemaining: Math.floor(Math.random() * (SIM_DWELL_TICKS + 1)),
 					speedFactor: 0.85 + Math.random() * 0.3,
 				});
 			}
@@ -177,29 +171,18 @@ export class TrainSimulator {
 		return results;
 	}
 
-	/** 열차 진행률을 전진시키고, 구간 끝에 도달하면 다음 구간으로 넘긴다 */
+	/** 열차 진행률을 전진시키고, 구간 끝에 도달하면 초과분을 이월하여 다음 구간을 시작한다 */
 	private advanceTrain(train: SimTrain, route: string[]): void {
 		const segmentCount = route.length - 1;
-
-		// 정차 중이면 카운터만 감소
-		if (train.dwellRemaining > 0) {
-			train.dwellRemaining -= 1;
-			return;
-		}
-
 		train.progress += PROGRESS_PER_TICK * train.speedFactor;
-
-		if (train.progress >= 1) {
-			train.progress = 0; // 초과분 버림 — 역에서 정확히 0 시작
-			const isTerminal = this.moveToNextSegment(train, segmentCount);
-			const baseDwell = isTerminal ? SIM_TERMINAL_DWELL_TICKS : SIM_DWELL_TICKS;
-			// ±1틱 랜덤 편차로 열차 간 동기화 방지
-			train.dwellRemaining = Math.max(0, baseDwell + Math.floor(Math.random() * 3) - 1);
+		while (train.progress >= 1) {
+			train.progress -= 1;
+			this.moveToNextSegment(train, segmentCount);
 		}
 	}
 
-	/** 다음 구간으로 이동 (종점 반전 또는 순환). 종점 방향 전환 시 true 반환 */
-	private moveToNextSegment(train: SimTrain, segmentCount: number): boolean {
+	/** 다음 구간으로 이동 (종점 반전 또는 순환) */
+	private moveToNextSegment(train: SimTrain, segmentCount: number): void {
 		const isCircular = train.line === 2;
 
 		if (train.direction === "상행") {
@@ -207,25 +190,22 @@ export class TrainSimulator {
 			if (train.segmentIdx >= segmentCount) {
 				if (isCircular) {
 					train.segmentIdx = 0;
-					return false;
+				} else {
+					train.segmentIdx = segmentCount - 1;
+					train.direction = "하행";
 				}
-				train.segmentIdx = segmentCount - 1;
-				train.direction = "하행";
-				return true;
 			}
 		} else {
 			train.segmentIdx--;
 			if (train.segmentIdx < 0) {
 				if (isCircular) {
 					train.segmentIdx = segmentCount - 1;
-					return false;
+				} else {
+					train.segmentIdx = 0;
+					train.direction = "상행";
 				}
-				train.segmentIdx = 0;
-				train.direction = "상행";
-				return true;
 			}
 		}
-		return false;
 	}
 
 	/** 현재 구간 내 progress로 화면 좌표를 보간한다 */
@@ -259,6 +239,8 @@ export class TrainSimulator {
 			nextX: toCoord.x,
 			nextY: toCoord.y,
 			trackAngle: Math.atan2(toCoord.y - fromCoord.y, toCoord.x - fromCoord.x),
+			speedFactor: train.speedFactor,
+			simProgress: train.progress,
 		};
 	}
 
