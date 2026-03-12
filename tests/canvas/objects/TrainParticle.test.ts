@@ -134,13 +134,13 @@ describe("drawAnimatedTrains alpha 계산", () => {
 		expect(pool.get("1002")?.alpha).toBe(1.0);
 	});
 
-	it("역 선택: toStationId 일치 열차 1.0, 나머지 0.15", () => {
+	it("역 선택: 모든 열차 alpha 변화 없이 1.0 유지", () => {
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		const layer = createMockContainer() as any;
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		drawAnimatedTrains(layer, [MOCK_TRAIN, MOCK_TRAIN_2], pool as any, null, "S02", vi.fn());
 		expect(pool.get("1001")?.alpha).toBe(1.0);
-		expect(pool.get("1002")?.alpha).toBe(0.15);
+		expect(pool.get("1002")?.alpha).toBe(1.0);
 	});
 
 	it("열차 선택: 모든 열차 동일하게 alpha 1.0 (dim 없음)", () => {
