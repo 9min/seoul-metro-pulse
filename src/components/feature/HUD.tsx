@@ -48,40 +48,42 @@ export function HUD() {
 
 			{/* 운행 현황 카드 */}
 			<div className="flex items-start gap-2">
-			<div className={`${OVERLAY_PANEL} px-3 py-2 sm:w-48 sm:px-4 sm:py-3`}>
-				<div className="mb-1.5 flex items-center gap-2 sm:mb-2">
-					{!isSimulation && isPollingActive ? (
-						<span className="inline-flex animate-pulse items-center gap-1 rounded bg-red-600 px-1.5 py-0.5">
-							<span className="inline-block h-1.5 w-1.5 rounded-full bg-white" />
-							<span className="text-xs font-bold leading-none text-white">LIVE</span>
+				<div className={`${OVERLAY_PANEL} px-3 py-2 sm:w-48 sm:px-4 sm:py-3`}>
+					<div className="mb-1.5 flex items-center gap-2 sm:mb-2">
+						{!isSimulation && isPollingActive ? (
+							<span className="inline-flex animate-pulse items-center gap-1 rounded bg-red-600 px-1.5 py-0.5">
+								<span className="inline-block h-1.5 w-1.5 rounded-full bg-white" />
+								<span className="text-xs font-bold leading-none text-white">LIVE</span>
+							</span>
+						) : (
+							<span
+								className={`inline-block h-2 w-2 rounded-full ${
+									isPollingActive ? `animate-pulse ${indicatorColor}` : "bg-gray-500"
+								}`}
+							/>
+						)}
+						<span className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
+							{modeLabel}
 						</span>
-					) : (
-						<span
-							className={`inline-block h-2 w-2 rounded-full ${
-								isPollingActive ? `animate-pulse ${indicatorColor}` : "bg-gray-500"
-							}`}
-						/>
+					</div>
+					<p className="text-xl font-bold text-white sm:text-2xl">
+						{interpolatedTrains.length}
+						<span className="ml-1 text-sm font-normal text-gray-400">대</span>
+					</p>
+					<p className="mt-1 hidden text-xs text-gray-500 sm:block">
+						{formatElapsed(lastFetchedAt, now)} 업데이트
+					</p>
+					{!isSimulation && (
+						<p className="mt-1 hidden text-xs text-gray-600 sm:block">서울시 공공데이터 API</p>
 					)}
-					<span className="text-xs font-semibold tracking-wide text-gray-300 uppercase">
-						{modeLabel}
-					</span>
 				</div>
-				<p className="text-xl font-bold text-white sm:text-2xl">
-					{interpolatedTrains.length}
-					<span className="ml-1 text-sm font-normal text-gray-400">대</span>
-				</p>
-				<p className="mt-1 hidden text-xs text-gray-500 sm:block">
-					{formatElapsed(lastFetchedAt, now)} 업데이트
-				</p>
 				{!isSimulation && (
-					<p className="mt-1 hidden text-xs text-gray-600 sm:block">서울시 공공데이터 API</p>
+					<p className="w-52 shrink-0 select-none pt-1 text-[12px] leading-snug text-white/50 sm:hidden">
+						실시간 위치는 공공 API 기반이며
+						<br />
+						일부 오차가 있을 수 있습니다
+					</p>
 				)}
-			</div>
-			{!isSimulation && (
-				<p className="w-52 shrink-0 select-none pt-1 text-[12px] leading-snug text-white/50 sm:hidden">
-					실시간 위치는 공공 API 기반이며<br />일부 오차가 있을 수 있습니다
-				</p>
-			)}
 			</div>
 
 			{/* 에러 배너 */}

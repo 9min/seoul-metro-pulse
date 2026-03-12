@@ -21,9 +21,7 @@ const SNAPSHOT_TTL_MS = 2 * 60 * 1000;
  * 전체 열차 스냅샷 맵을 localStorage에 저장한다.
  * Private 모드 등 실패 시 조용히 무시한다.
  */
-export function saveAllSnapshots(
-	snapshots: Map<string, TrainSnapshot>,
-): void {
+export function saveAllSnapshots(snapshots: Map<string, TrainSnapshot>): void {
 	try {
 		const obj: Record<string, TrainSnapshot> = {};
 		for (const [trainNo, snapshot] of snapshots) {
