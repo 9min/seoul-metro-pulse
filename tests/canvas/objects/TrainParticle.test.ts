@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimatedTrainState } from "@/types/train";
 
 // PixiJS Graphics 클래스 모킹 (new 연산자로 생성 가능)
@@ -91,18 +91,19 @@ const MOCK_TRAIN: AnimatedTrainState = {
 	trainNo: "1001",
 	line: 1,
 	direction: "상행",
-	startX: 100,
-	startY: 100,
-	targetX: 100,
-	targetY: 100,
 	currentX: 100,
 	currentY: 100,
-	startTime: 0,
-	duration: 0,
 	stationId: "S01",
 	toStationId: "S02",
+	fromX: 100,
+	fromY: 100,
+	toX: 100,
+	toY: 100,
+	progress: 0,
+	isMoving: false,
 	trackAngle: 0,
 	createdAt: 0,
+	lastPollAt: 0,
 };
 
 const MOCK_TRAIN_2: AnimatedTrainState = {
@@ -116,6 +117,12 @@ describe("drawAnimatedTrains alpha 계산", () => {
 
 	beforeEach(() => {
 		pool = new Map();
+		// 페이드인이 완료된 상태로 고정 (createdAt=0 기준 1초 경과)
+		vi.spyOn(performance, "now").mockReturnValue(1000);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	it("선택 없음: 모든 열차 alpha 1.0", () => {
@@ -136,13 +143,13 @@ describe("drawAnimatedTrains alpha 계산", () => {
 		expect(pool.get("1002")?.alpha).toBe(0.15);
 	});
 
-	it("열차 선택: 선택 열차 1.0, 나머지 0.15", () => {
+	it("열차 선택: 모든 열차 동일하게 alpha 1.0 (dim 없음)", () => {
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		const layer = createMockContainer() as any;
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		drawAnimatedTrains(layer, [MOCK_TRAIN, MOCK_TRAIN_2], pool as any, "1001", null, vi.fn());
 		expect(pool.get("1001")?.alpha).toBe(1.0);
-		expect(pool.get("1002")?.alpha).toBe(0.15);
+		expect(pool.get("1002")?.alpha).toBe(1.0);
 	});
 });
 
@@ -185,12 +192,13 @@ describe("drawAnimatedTrains 캡슐 회전", () => {
 		// 먼저 이동 중인 열차를 그려서 rotation 설정
 		const movingTrain: AnimatedTrainState = {
 			...MOCK_TRAIN,
-			startX: 100,
-			startY: 100,
-			targetX: 200,
-			targetY: 100,
+			fromX: 100,
+			fromY: 100,
+			toX: 200,
+			toY: 100,
 			currentX: 150,
 			currentY: 100,
+			isMoving: true,
 		};
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		drawAnimatedTrains(layer, [movingTrain], pool as any, null, null, vi.fn());
@@ -199,15 +207,16 @@ describe("drawAnimatedTrains 캡슐 회전", () => {
 		// 목표=0, 초기=0 → rotation=0 (차이 없음)
 		expect(rotationAfterMove).toBeCloseTo(0, 5);
 
-		// 정지 상태로 변경 (startX === targetX, startY === targetY)
+		// 정지 상태로 변경 (isMoving=false)
 		const stoppedTrain: AnimatedTrainState = {
 			...MOCK_TRAIN,
-			startX: 200,
-			startY: 100,
-			targetX: 200,
-			targetY: 100,
+			fromX: 200,
+			fromY: 100,
+			toX: 200,
+			toY: 100,
 			currentX: 200,
 			currentY: 100,
+			isMoving: false,
 		};
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		drawAnimatedTrains(layer, [stoppedTrain], pool as any, null, null, vi.fn());
