@@ -25,17 +25,33 @@ vi.mock("@/canvas/objects/TrainParticle", () => ({
 	drawAnimatedTrains: vi.fn(),
 }));
 
-const MOCK_TRAIN: InterpolatedTrain = {
+/** 도착 상태 기본 열차 — S01에 정차 중, 다음역 S00 */
+const MOCK_TRAIN_ARRIVE: InterpolatedTrain = {
 	trainNo: "1001",
 	line: 1,
-	x: 100,
-	y: 200,
+	direction: "상행",
+	status: "도착",
+	stationId: "S01",
 	stationX: 100,
 	stationY: 200,
+	nextStationId: "S00",
+	nextX: 50,
+	nextY: 150,
+	trackAngle: 0,
+};
+
+/** 출발 상태 열차 — S01 출발, S00 방향 이동 */
+const MOCK_TRAIN_DEPART: InterpolatedTrain = {
+	trainNo: "1001",
+	line: 1,
 	direction: "상행",
-	progress: 0,
-	fromStationId: "S01",
-	toStationId: "S01",
+	status: "출발",
+	stationId: "S01",
+	stationX: 100,
+	stationY: 200,
+	nextStationId: "S00",
+	nextX: 50,
+	nextY: 150,
 	trackAngle: 0,
 };
 
@@ -48,54 +64,38 @@ describe("TrainAnimator", () => {
 		animator.setLayer(createMockContainer() as any);
 	});
 
+	// ── 기본 동작 ──────────────────────────────────────────────────────────────
+
 	it("초기 상태에서 열차 수가 0이다", () => {
 		expect(animator.count).toBe(0);
 	});
 
 	it("setTargets로 열차를 추가하면 count가 증가한다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-		expect(animator.count).toBe(1);
-	});
-
-	it("사라진 열차는 setTargets 후 즉시 삭제되지 않고 fade-out 상태가 된다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-		expect(animator.count).toBe(1);
-
-		animator.setTargets([]);
-		// fade-out 중이므로 아직 존재
-		expect(animator.count).toBe(1);
-		const state = animator.getTrainState("1001");
-		expect(state?.fadeOutStartedAt).toBeDefined();
-	});
-
-	it("기존 열차에 새 목표를 전달하면 상태가 갱신된다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-		const updatedTrain: InterpolatedTrain = { ...MOCK_TRAIN, x: 300, y: 400 };
-		animator.setTargets([updatedTrain]);
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		expect(animator.count).toBe(1);
 	});
 
 	it("clear()로 전체 상태를 초기화한다", () => {
-		animator.setTargets([MOCK_TRAIN]);
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		animator.clear();
 		expect(animator.count).toBe(0);
 	});
 
-	it("clear() 후 pool이 비워진다 (count 0으로 확인)", () => {
-		animator.setTargets([MOCK_TRAIN]);
+	it("clear() 후 열차를 다시 추가할 수 있다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		animator.clear();
-		animator.setTargets([MOCK_TRAIN]);
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		expect(animator.count).toBe(1);
 	});
 
 	it("layer가 설정되지 않으면 update()가 에러 없이 반환한다", () => {
 		const noLayerAnimator = new TrainAnimator();
-		noLayerAnimator.setTargets([MOCK_TRAIN]);
+		noLayerAnimator.setTargets([MOCK_TRAIN_ARRIVE]);
 		expect(() => noLayerAnimator.update()).not.toThrow();
 	});
 
 	it("getTrainState로 현재 열차 상태를 조회한다", () => {
-		animator.setTargets([MOCK_TRAIN]);
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		const state = animator.getTrainState("1001");
 		expect(state).toBeDefined();
 		expect(state?.trainNo).toBe("1001");
@@ -110,220 +110,322 @@ describe("TrainAnimator", () => {
 		expect(() => animator.setOnTrainTap(cb)).not.toThrow();
 	});
 
-	it("신규 열차는 duration=0으로 즉시 배치된다", () => {
-		animator.setTargets([MOCK_TRAIN]);
+	// ── 신규 열차 초기 배치 ────────────────────────────────────────────────────
+
+	it("신규 도착 열차는 stationX/Y에 배치되고 isMoving=false이다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		const state = animator.getTrainState("1001");
-		expect(state?.duration).toBe(0);
+		expect(state?.isMoving).toBe(false);
+		expect(state?.currentX).toBe(100);
+		expect(state?.currentY).toBe(200);
+		expect(state?.progress).toBe(0);
+	});
+
+	it("신규 진입 열차도 stationX/Y에 배치되고 isMoving=false이다", () => {
+		const enter: InterpolatedTrain = { ...MOCK_TRAIN_ARRIVE, status: "진입" };
+		animator.setTargets([enter]);
+		const state = animator.getTrainState("1001");
+		expect(state?.isMoving).toBe(false);
 		expect(state?.currentX).toBe(100);
 		expect(state?.currentY).toBe(200);
 	});
 
-	it("같은 좌표면 정지한다 (duration=0)", () => {
-		animator.setTargets([MOCK_TRAIN]);
-
-		// 같은 좌표로 다시 전달
-		animator.setTargets([MOCK_TRAIN], 9000);
+	it("신규 출발 열차는 stationX/Y에서 시작해 nextX/Y를 향해 isMoving=true이다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]);
 		const state = animator.getTrainState("1001");
-		expect(state?.duration).toBe(0);
+		expect(state?.isMoving).toBe(true);
+		expect(state?.currentX).toBe(100); // 출발 직후 위치 (progress=0)
+		expect(state?.currentY).toBe(200);
+		expect(state?.fromX).toBe(100);
+		expect(state?.fromY).toBe(200);
+		expect(state?.toX).toBe(50);
+		expect(state?.toY).toBe(150);
+		expect(state?.progress).toBe(0);
 	});
 
-	it("다른 좌표면 등속 직선 이동한다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-
-		const movedTrain: InterpolatedTrain = { ...MOCK_TRAIN, x: 200, y: 300 };
-		animator.setTargets([movedTrain], 9000);
+	it("stationId와 toStationId가 올바르게 저장된다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		const state = animator.getTrainState("1001");
-		expect(state?.duration).toBe(9000);
-		expect(state?.targetX).toBe(200);
-		expect(state?.targetY).toBe(300);
+		expect(state?.stationId).toBe("S01");
+		expect(state?.toStationId).toBe("S00");
 	});
 
-	it("이동 시 경로가 항상 2점이다", () => {
-		animator.setTargets([MOCK_TRAIN]);
+	// ── 같은 구간 재폴링 ────────────────────────────────────────────────────────
 
-		const movedTrain: InterpolatedTrain = { ...MOCK_TRAIN, x: 300, y: 400 };
-		animator.setTargets([movedTrain], 9000);
+	it("같은 구간 출발 재폴링 시 progress가 초기화되지 않는다 (이동 연속성 — Rule 4)", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]);
 		const state = animator.getTrainState("1001");
-		expect(state?.path.length).toBe(2);
+		// 진행 중 시뮬레이션
+		if (state) state.progress = 0.4;
+
+		animator.setTargets([MOCK_TRAIN_DEPART]); // 동일 구간 재폴링
+		const stateAfter = animator.getTrainState("1001");
+		expect(stateAfter?.progress).toBe(0.4); // progress 유지
+		expect(stateAfter?.isMoving).toBe(true);
 	});
 
-	it("이동 시 linear=true이다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-
-		const movedTrain: InterpolatedTrain = { ...MOCK_TRAIN, x: 300, y: 400 };
-		animator.setTargets([movedTrain], 9000);
+	it("같은 구간 출발 재폴링 시 목표 좌표가 최신으로 동기화된다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]);
+		const updatedTarget: InterpolatedTrain = { ...MOCK_TRAIN_DEPART, nextX: 60, nextY: 160 };
+		animator.setTargets([updatedTarget]);
 		const state = animator.getTrainState("1001");
-		expect(state?.linear).toBe(true);
+		expect(state?.toX).toBe(60);
+		expect(state?.toY).toBe(160);
 	});
 
-	it("update() 후 trackAngle이 이동 방향으로 갱신된다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-
-		const rightTrain: InterpolatedTrain = { ...MOCK_TRAIN, x: 200, y: 200 };
-		animator.setTargets([rightTrain], 9000);
-		animator.update();
-
+	it("이동 중 같은 구간 도착 수신은 무시하고 이동 상태를 유지한다 (스테일 데이터)", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // isMoving=true
 		const state = animator.getTrainState("1001");
-		// 이동 방향: (100,200)→(200,200) = atan2(0,100) = 0
-		expect(state?.trackAngle).toBeCloseTo(0, 1);
+		if (state) state.progress = 0.5;
+
+		const arrive: InterpolatedTrain = { ...MOCK_TRAIN_ARRIVE, status: "도착" };
+		animator.setTargets([arrive]); // 같은 구간, 도착 수신
+		const stateAfter = animator.getTrainState("1001");
+		expect(stateAfter?.isMoving).toBe(true); // 이동 상태 유지
+		expect(stateAfter?.progress).toBe(0.5); // progress 유지
 	});
 
-	it("정지 상태 열차는 trackAngle이 유지된다", () => {
-		const trainWithAngle: InterpolatedTrain = { ...MOCK_TRAIN, trackAngle: 1.5 };
-		animator.setTargets([trainWithAngle]);
-
-		// 같은 좌표 → 정지 → trackAngle 유지
-		animator.setTargets([trainWithAngle], 9000);
+	it("이동 중 같은 구간 진입 수신도 무시하고 이동 상태를 유지한다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // isMoving=true
+		const enter: InterpolatedTrain = { ...MOCK_TRAIN_ARRIVE, status: "진입" };
+		animator.setTargets([enter]);
 		const state = animator.getTrainState("1001");
-		expect(state?.trackAngle).toBe(1.5);
+		expect(state?.isMoving).toBe(true);
+	});
+
+	it("정차 중 도착 재폴링은 정차 상태를 유지한다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]); // isMoving=false
+		animator.setTargets([MOCK_TRAIN_ARRIVE]); // 동일 재폴링
+		const state = animator.getTrainState("1001");
+		expect(state?.isMoving).toBe(false);
+	});
+
+	// ── 다음 구간으로 정상 진행 (trainAdvanced) ────────────────────────────────
+
+	it("출발로 다음 역 진행 시 출발역 좌표로 스냅 후 다음 역으로 이동한다 (노선 이탈 방지)", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // S01 출발, fromX=100, toX=50
+
+		// 이동 중간 위치 시뮬레이션 (75 ≈ S01과 S00의 중간)
+		const state = animator.getTrainState("1001");
+		if (state) {
+			state.currentX = 75;
+			state.currentY = 175;
+		}
+
+		// S00(다음 역)에서 출발 (trainAdvanced)
+		const departFromNext: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			stationId: "S00", // 기존 toStationId → trainAdvanced 분기
+			stationX: 50,
+			stationY: 150,
+			nextStationId: "S_PREV",
+			nextX: 10,
+			nextY: 100,
+		};
+		animator.setTargets([departFromNext]);
+		const stateAfter = animator.getTrainState("1001");
+
+		// fromX는 출발역(S00) 좌표(50)로 스냅 — 노선 이탈 방지
+		expect(stateAfter?.fromX).toBe(50);   // B역 좌표 = train.stationX
+		expect(stateAfter?.fromY).toBe(150);
+		expect(stateAfter?.currentX).toBe(50);
+		expect(stateAfter?.currentY).toBe(150);
+		expect(stateAfter?.toX).toBe(10);    // 새 목표역
+		expect(stateAfter?.progress).toBe(0); // 새 구간 시작
+		expect(stateAfter?.isMoving).toBe(true);
+		expect(stateAfter?.stationId).toBe("S00");
+		expect(stateAfter?.toStationId).toBe("S_PREV");
+	});
+
+	it("도착으로 다음 역 진행 시 역 좌표로 전진 스냅한다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // S01→S00 이동 중
+
+		// S00 도착 (trainAdvanced + 도착)
+		const arrivedAtNext: InterpolatedTrain = {
+			...MOCK_TRAIN_ARRIVE,
+			stationId: "S00", // 기존 toStationId
+			stationX: 50,
+			stationY: 150,
+			nextStationId: "S_PREV",
+			nextX: 10,
+			nextY: 100,
+			status: "도착",
+		};
+		animator.setTargets([arrivedAtNext]);
+		const state = animator.getTrainState("1001");
+
+		expect(state?.isMoving).toBe(false);
+		expect(state?.currentX).toBe(50); // 역 좌표로 전진 스냅
+		expect(state?.currentY).toBe(150);
+		expect(state?.stationId).toBe("S00");
+		expect(state?.toStationId).toBe("S_PREV");
+	});
+
+	// ── 예상 밖 구간 변경 (API 이상) ──────────────────────────────────────────
+
+	it("예상 밖 구간 변경 시 새 역으로 스냅 후 이동한다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]); // S01 정차
+
+		// 2+ 역 점프 (S01→S03, API 이상)
+		const unexpectedJump: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			stationId: "S03", // S00이 아닌 전혀 다른 역
+			stationX: 300,
+			stationY: 400,
+			nextStationId: "S04",
+			nextX: 500,
+			nextY: 600,
+		};
+		animator.setTargets([unexpectedJump]);
+		const state = animator.getTrainState("1001");
+
+		expect(state?.currentX).toBe(300); // 새 역으로 스냅
+		expect(state?.currentY).toBe(400);
+		expect(state?.fromX).toBe(300);
+		expect(state?.toX).toBe(500);
+		expect(state?.progress).toBe(0);
+		expect(state?.isMoving).toBe(true);
+	});
+
+	it("예상 밖 구간이 도착 상태면 정차한다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]); // S01 정차
+		const unexpectedArrive: InterpolatedTrain = {
+			...MOCK_TRAIN_ARRIVE,
+			stationId: "S05",
+			stationX: 500,
+			stationY: 600,
+			nextStationId: "S06",
+			nextX: 600,
+			nextY: 700,
+			status: "도착",
+		};
+		animator.setTargets([unexpectedArrive]);
+		const state = animator.getTrainState("1001");
+		expect(state?.isMoving).toBe(false);
+		expect(state?.currentX).toBe(500);
+	});
+
+	// ── trailDirty 플래그 (스냅 시 Trail 허상 선 방지) ───────────────────────
+
+	it("출발로 다음 역 진행(trainAdvanced+isDepart) 시 trailDirty=true가 설정된다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // S01 출발
+
+		// S00(다음 역)에서 출발 (trainAdvanced)
+		const departFromNext: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			stationId: "S00",
+			stationX: 50,
+			stationY: 150,
+			nextStationId: "S_PREV",
+			nextX: 10,
+			nextY: 100,
+		};
+		animator.setTargets([departFromNext]);
+		const state = animator.getTrainState("1001");
+		expect(state?.trailDirty).toBe(true);
+	});
+
+	it("도착으로 다음 역 진행(trainAdvanced+도착) 시 trailDirty=true가 설정된다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]); // S01→S00 이동 중
+
+		// S00 도착 (trainAdvanced + 도착)
+		const arrivedAtNext: InterpolatedTrain = {
+			...MOCK_TRAIN_ARRIVE,
+			stationId: "S00",
+			stationX: 50,
+			stationY: 150,
+			nextStationId: "S_PREV",
+			nextX: 10,
+			nextY: 100,
+			status: "도착",
+		};
+		animator.setTargets([arrivedAtNext]);
+		const state = animator.getTrainState("1001");
+		expect(state?.trailDirty).toBe(true);
+	});
+
+	it("예상 밖 구간 변경 시 trailDirty=true가 설정된다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]); // S01 정차
+
+		// 2+ 역 점프 (S01→S03, API 이상)
+		const unexpectedJump: InterpolatedTrain = {
+			...MOCK_TRAIN_DEPART,
+			stationId: "S03",
+			stationX: 300,
+			stationY: 400,
+			nextStationId: "S04",
+			nextX: 500,
+			nextY: 600,
+		};
+		animator.setTargets([unexpectedJump]);
+		const state = animator.getTrainState("1001");
+		expect(state?.trailDirty).toBe(true);
+	});
+
+	it("같은 구간 재폴링 시 trailDirty가 설정되지 않는다", () => {
+		animator.setTargets([MOCK_TRAIN_DEPART]);
+		const state = animator.getTrainState("1001");
+		if (state) state.trailDirty = false;
+
+		animator.setTargets([MOCK_TRAIN_DEPART]); // 동일 구간 재폴링
+		const stateAfter = animator.getTrainState("1001");
+		expect(stateAfter?.trailDirty).toBe(false);
+	});
+
+	// ── trackAngle ─────────────────────────────────────────────────────────────
+
+	it("trackAngle은 항상 최신 폴 값을 사용한다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
+		const withAngle: InterpolatedTrain = { ...MOCK_TRAIN_DEPART, trackAngle: 1.57 };
+		animator.setTargets([withAngle]);
+		const state = animator.getTrainState("1001");
+		expect(state?.trackAngle).toBe(1.57);
+	});
+
+	it("direction이 바뀌면 기존 이동 상태는 유지된 채 direction만 갱신된다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
+		const reversed: InterpolatedTrain = { ...MOCK_TRAIN_ARRIVE, direction: "하행" };
+		animator.setTargets([reversed]);
+		const state = animator.getTrainState("1001");
+		expect(state?.direction).toBe("하행");
+	});
+
+	// ── fade-out / fade-in ─────────────────────────────────────────────────────
+
+	it("사라진 열차는 setTargets 후 즉시 삭제되지 않고 fade-out 상태가 된다", () => {
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
+		animator.setTargets([]);
+		expect(animator.count).toBe(1);
+		const state = animator.getTrainState("1001");
+		expect(state?.fadeOutStartedAt).toBeDefined();
 	});
 
 	it("fade-out 완료 후 열차가 삭제된다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-		animator.setTargets([]); // fade-out 시작
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
+		animator.setTargets([]);
 
 		const state = animator.getTrainState("1001");
-		expect(state?.fadeOutStartedAt).toBeDefined();
-
 		// fade-out 시작 시각을 과거로 조정하여 완료 시뮬레이션
 		if (state) {
 			state.fadeOutStartedAt = performance.now() - 600; // TRAIN_FADEOUT_MS(500) 초과
 		}
 
-		animator.update(); // removeCompletedFadeOuts 호출
+		animator.update();
 
 		expect(animator.count).toBe(0);
 		expect(animator.getTrainState("1001")).toBeUndefined();
 	});
 
 	it("fade-out 중 복귀하면 fade-out이 취소된다", () => {
-		animator.setTargets([MOCK_TRAIN]);
+		animator.setTargets([MOCK_TRAIN_ARRIVE]);
 		animator.setTargets([]); // fade-out 시작
 
 		const stateFading = animator.getTrainState("1001");
 		expect(stateFading?.fadeOutStartedAt).toBeDefined();
 
-		// 같은 열차가 다시 나타남
-		animator.setTargets([MOCK_TRAIN]);
-
+		animator.setTargets([MOCK_TRAIN_ARRIVE]); // 같은 열차 복귀
 		const stateRevived = animator.getTrainState("1001");
 		expect(stateRevived?.fadeOutStartedAt).toBeUndefined();
 		expect(animator.count).toBe(1);
-	});
-
-	it("먼 거리도 등속 직선 이동한다 (텔레포트 없음)", () => {
-		animator.setTargets([MOCK_TRAIN]);
-
-		const farTrain: InterpolatedTrain = { ...MOCK_TRAIN, x: 2900, y: 1800 };
-		animator.setTargets([farTrain], 9000);
-
-		const state = animator.getTrainState("1001");
-		expect(state?.duration).toBe(9000);
-		expect(state?.path.length).toBe(2);
-	});
-
-	it("direction이 바뀌어도 기존 위치에서 애니메이션이 계속된다", () => {
-		animator.setTargets([MOCK_TRAIN]);
-
-		const reversedTrain: InterpolatedTrain = {
-			...MOCK_TRAIN,
-			x: 200,
-			y: 200,
-			direction: "하행",
-		};
-		animator.setTargets([reversedTrain], 9000);
-
-		const state = animator.getTrainState("1001");
-		expect(state?.direction).toBe("하행");
-		expect(state?.startX).toBe(100);
-		expect(state?.startY).toBe(200);
-		expect(state?.targetX).toBe(200);
-		expect(state?.targetY).toBe(200);
-	});
-
-	it("실시간 모드에서 역 변경(비인접) 시 startX/Y가 stationX/Y로 재설정된다", () => {
-		// S01에 열차 배치 후 S02로 역 변경 (adjacencyMap 없음 → 비인접 처리)
-		animator.setTargets([MOCK_TRAIN]); // currentX=100, currentY=200
-
-		const changedStationTrain: InterpolatedTrain = {
-			...MOCK_TRAIN,
-			x: 300,
-			y: 400,
-			stationX: 200,
-			stationY: 300,
-			fromStationId: "S02",
-			toStationId: "S03",
-		};
-		// duration 미전달 → 실시간 모드 (continuousMode=false)
-		animator.setTargets([changedStationTrain]);
-
-		const state = animator.getTrainState("1001");
-		// 실시간 모드 + adjacencyMap 없음 → 비인접 처리 → startX/Y = stationX/Y
-		expect(state?.startX).toBe(200);
-		expect(state?.startY).toBe(300);
-		expect(state?.targetX).toBe(300);
-		expect(state?.targetY).toBe(400);
-	});
-
-	it("시뮬레이션 모드(continuousMode)에서 역 변경 시 startX/Y가 currentX/Y로 유지된다", () => {
-		// S01에 열차 배치
-		animator.setTargets([MOCK_TRAIN]); // currentX=100, currentY=200
-
-		const changedStationTrain: InterpolatedTrain = {
-			...MOCK_TRAIN,
-			x: 300,
-			y: 400,
-			stationX: 200,
-			stationY: 300,
-			fromStationId: "S02",
-			toStationId: "S03",
-		};
-		// duration 전달 → 시뮬레이션 모드 (continuousMode=true)
-		animator.setTargets([changedStationTrain], 9000);
-
-		const state = animator.getTrainState("1001");
-		// 시뮬레이션 모드 → stationX/Y 리셋 금지 → currentX/Y 유지 (순간이동 방지)
-		expect(state?.startX).toBe(100);
-		expect(state?.startY).toBe(200);
-		expect(state?.targetX).toBe(300);
-		expect(state?.targetY).toBe(400);
-	});
-
-	it("역이 동일하면 startX/Y가 currentX/Y로 유지된다", () => {
-		// 같은 fromStationId로 갱신 → currentX/Y 사용
-		animator.setTargets([MOCK_TRAIN]); // currentX=100, currentY=200
-
-		const samestationTrain: InterpolatedTrain = {
-			...MOCK_TRAIN,
-			x: 150,
-			y: 250,
-			stationX: 100, // 같은 역
-			stationY: 200,
-			fromStationId: "S01", // 동일
-		};
-		animator.setTargets([samestationTrain], 9000);
-
-		const state = animator.getTrainState("1001");
-		// fromStationId 동일 → startX/Y = currentX/Y
-		expect(state?.startX).toBe(100);
-		expect(state?.startY).toBe(200);
-	});
-
-	it("신규 열차 출발 상태에서 currentX/Y는 stationX/Y이다 (다음역 아님)", () => {
-		// 출발 상태: x/y = 다음역, stationX/Y = 현재역
-		const departureTrain: InterpolatedTrain = {
-			...MOCK_TRAIN,
-			x: 200, // 다음역 좌표
-			y: 300,
-			stationX: 100, // 현재역 좌표
-			stationY: 200,
-		};
-		animator.setTargets([departureTrain]);
-
-		const state = animator.getTrainState("1001");
-		// 신규 열차는 stationX/Y에 배치되어야 함
-		expect(state?.currentX).toBe(100);
-		expect(state?.currentY).toBe(200);
-		expect(state?.duration).toBe(0);
 	});
 });

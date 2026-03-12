@@ -5,7 +5,7 @@ import type { AnimatedTrainState } from "@/types/train";
 
 function makeTrain(
 	trainNo: string,
-	fromStationId: string,
+	stationId: string,
 	toStationId: string,
 ): AnimatedTrainState {
 	return {
@@ -20,10 +20,10 @@ function makeTrain(
 		currentY: 0,
 		startTime: 0,
 		duration: 0,
-		fromStationId,
+		stationId,
 		toStationId,
-		path: [{ x: 0, y: 0 }],
-		pathCumulativeDist: [0],
+		trackAngle: 0,
+		createdAt: 0,
 	};
 }
 

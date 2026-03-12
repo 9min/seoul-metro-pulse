@@ -99,10 +99,10 @@ const MOCK_TRAIN: AnimatedTrainState = {
 	currentY: 100,
 	startTime: 0,
 	duration: 0,
-	fromStationId: "S01",
+	stationId: "S01",
 	toStationId: "S02",
-	path: [{ x: 100, y: 100 }],
-	pathCumulativeDist: [0],
+	trackAngle: 0,
+	createdAt: 0,
 };
 
 const MOCK_TRAIN_2: AnimatedTrainState = {
@@ -153,17 +153,23 @@ describe("drawAnimatedTrains 캡슐 회전", () => {
 		pool = new Map();
 	});
 
-	it("이동 중인 열차의 rotation이 이동 방향으로 부드럽게 전환된다", () => {
+	it("이동 중인 열차의 rotation이 trackAngle 방향으로 부드럽게 전환된다", () => {
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		const layer = createMockContainer() as any;
+
+		// 1회차: trackAngle=0으로 등록 (신규 열차 → rotation=0으로 스냅)
+		const initTrain: AnimatedTrainState = {
+			...MOCK_TRAIN,
+			trackAngle: 0,
+		};
+		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
+		drawAnimatedTrains(layer, [initTrain], pool as any, null, null, vi.fn());
+		expect(pool.get("1001")?.rotation).toBe(0);
+
+		// 2회차: trackAngle=π/4로 갱신 → lerp 적용
 		const movingTrain: AnimatedTrainState = {
 			...MOCK_TRAIN,
-			startX: 100,
-			startY: 100,
-			targetX: 200,
-			targetY: 200,
-			currentX: 150,
-			currentY: 150,
+			trackAngle: Math.PI / 4, // 45도 방향
 		};
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		drawAnimatedTrains(layer, [movingTrain], pool as any, null, null, vi.fn());
@@ -220,16 +226,11 @@ describe("drawAnimatedTrains 캡슐 회전", () => {
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		layer.addChild(gfx as any);
 
-		// 목표 방향: -(π - 0.1) ≈ -170° (반대쪽)
+		// trackAngle: -(π - 0.1) ≈ -170° (반대쪽)
 		// 최단 경로: +0.2 (시계방향 20°), NOT -340°
 		const train: AnimatedTrainState = {
 			...MOCK_TRAIN,
-			startX: 100,
-			startY: 100,
-			targetX: 100 + Math.cos(-(Math.PI - 0.1)) * 10,
-			targetY: 100 + Math.sin(-(Math.PI - 0.1)) * 10,
-			currentX: 100,
-			currentY: 100,
+			trackAngle: -(Math.PI - 0.1),
 		};
 		// biome-ignore lint/suspicious/noExplicitAny: 테스트용 모킹
 		drawAnimatedTrains(layer, [train], pool as any, null, null, vi.fn());

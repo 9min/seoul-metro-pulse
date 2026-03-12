@@ -22,7 +22,6 @@ import {
 	INTRO_ZOOM_START,
 	LABEL_FULL_SCALE,
 	LABEL_SHOW_SCALE,
-	SIMULATION_TICK_MS,
 	TRAIL_FRAME_SKIP,
 	TRAIL_MAX_POINTS,
 } from "@/constants/mapConfig";
@@ -35,7 +34,6 @@ import { useTrainPolling } from "@/hooks/useTrainPolling";
 import { useMapStore } from "@/stores/useMapStore";
 import { maybeUpdatePerfStore } from "@/stores/usePerfStore";
 import { useRouteStore } from "@/stores/useRouteStore";
-import { useSimulationStore } from "@/stores/useSimulationStore";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
 import type { Station, StationLink } from "@/types/station";
@@ -100,7 +98,6 @@ export function MapCanvas() {
 	const selectedStation = useStationStore((state) => state.selectedStation);
 	const selectedTrainNo = useTrainStore((state) => state.selectedTrainNo);
 	const activeLines = useMapStore((state) => state.activeLines);
-	const mode = useSimulationStore((state) => state.mode);
 	const route = useRouteStore((state) => state.route);
 
 	const adjacencyMap = useMemo(() => buildAdjacencyMap(LINKS), []);
@@ -269,9 +266,8 @@ export function MapCanvas() {
 	// 폴링 데이터가 갱신되면 애니메이터에 새 목표를 전달
 	useEffect(() => {
 		if (animatorRef.current === null) return;
-		const duration = mode === "simulation" ? SIMULATION_TICK_MS : undefined;
-		animatorRef.current.setTargets(interpolatedTrains, duration, adjacencyMap);
-	}, [interpolatedTrains, mode]);
+		animatorRef.current.setTargets(interpolatedTrains);
+	}, [interpolatedTrains]);
 
 	// 역 선택 또는 노선 필터 변경 시 linksLayer 딤 + 노선 alpha + stationAlpha 업데이트
 	useEffect(() => {

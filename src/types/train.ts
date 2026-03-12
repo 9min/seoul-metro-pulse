@@ -29,24 +29,23 @@ export interface TrainPosition {
 export interface InterpolatedTrain {
 	trainNo: string;
 	line: number;
-	x: number;
-	y: number;
-	/** 열차가 물리적으로 위치한 역의 화면 X 좌표 (출발 상태여도 현재역) */
-	stationX: number;
-	/** 열차가 물리적으로 위치한 역의 화면 Y 좌표 (출발 상태여도 현재역) */
-	stationY: number;
 	direction: "상행" | "하행";
-	progress: number;
-	fromStationId: string;
-	toStationId: string;
-	/** 트랙 방향 각도 (라디안). 신규 열차 초기 회전에 사용 */
+	/** API 상태 — TrainAnimator가 직접 사용 */
+	status: "진입" | "도착" | "출발";
+	/** 현재 역 ID */
+	stationId: string;
+	/** 현재 역 화면 X 좌표 */
+	stationX: number;
+	/** 현재 역 화면 Y 좌표 */
+	stationY: number;
+	/** 다음 역 ID (히트맵용) */
+	nextStationId: string;
+	/** 다음 역 화면 X 좌표 */
+	nextX: number;
+	/** 다음 역 화면 Y 좌표 */
+	nextY: number;
+	/** 트랙 방향 각도 (라디안). 현재역→다음역 방향 */
 	trackAngle: number;
-}
-
-/** 경로 상의 한 점 (화면 좌표) */
-export interface PathPoint {
-	x: number;
-	y: number;
 }
 
 /** 애니메이션 중인 열차 상태 (TrainAnimator 내부용) */
@@ -54,35 +53,31 @@ export interface AnimatedTrainState {
 	trainNo: string;
 	line: number;
 	direction: "상행" | "하행";
-	/** 애니메이션 시작 좌표 */
-	startX: number;
-	startY: number;
-	/** 애니메이션 목표 좌표 */
-	targetX: number;
-	targetY: number;
-	/** 현재 렌더링 좌표 */
+	/** 현재 렌더링 좌표 (매 프레임 advanceTrainState가 갱신) */
 	currentX: number;
 	currentY: number;
-	/** 애니메이션 시작 시각 (ms) */
-	startTime: number;
-	/** 애니메이션 지속 시간 (ms) */
-	duration: number;
-	/** 출발/도착 역 ID */
-	fromStationId: string;
+	/** 현재 구간 출발역 ID (히트맵용) */
+	stationId: string;
+	/** 현재 구간 도착역 ID (히트맵용) */
 	toStationId: string;
-	/**
-	 * 선로를 따르는 이동 경로 (시작점 → 경유역 → 목표점).
-	 * 직선 구간은 2개, 역을 경유하면 3개 이상의 점으로 구성된다.
-	 */
-	path: PathPoint[];
-	/** path 각 세그먼트의 누적 거리 (polyline 보간용). 길이 = path.length */
-	pathCumulativeDist: number[];
-	/** true이면 이징 없이 선형 보간한다 (시뮬레이션 모드용) */
-	linear?: boolean;
-	/** 트랙 방향 각도 (라디안). 신규 열차 초기 회전에 사용 */
-	trackAngle?: number;
+	/** 구간 출발 좌표 (progress=0 위치) */
+	fromX: number;
+	fromY: number;
+	/** 구간 도착 좌표 (progress=1 위치) */
+	toX: number;
+	toY: number;
+	/** 구간 진행률 [0.0, 1.0] — 절대 감소하지 않음 */
+	progress: number;
+	/** 이동 중 여부. 출발=true, 도착/진입=false */
+	isMoving: boolean;
+	/** 트랙 방향 각도 (라디안). 항상 다음 역 방향 */
+	trackAngle: number;
 	/** 열차 생성 시각 (ms). 페이드인 애니메이션에 사용 */
 	createdAt: number;
+	/** 마지막 폴 수신 시각 (ms) */
+	lastPollAt: number;
 	/** 페이드아웃 시작 시각 (ms). 설정되면 점진적으로 사라진다 */
 	fadeOutStartedAt?: number;
+	/** 스냅 발생 시 true — updateTrailQueues가 큐를 비우고 즉시 false로 초기화 */
+	trailDirty?: boolean;
 }

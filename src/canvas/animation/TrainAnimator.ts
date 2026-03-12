@@ -1,153 +1,43 @@
 import type { Container, Graphics } from "pixi.js";
-import { TRAIN_ANIMATION_DURATION_MS, TRAIN_FADEOUT_MS } from "@/constants/mapConfig";
+import { TRAIN_FADEOUT_MS } from "@/constants/mapConfig";
 import { useMapStore } from "@/stores/useMapStore";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
-import type { AnimatedTrainState, InterpolatedTrain, PathPoint } from "@/types/train";
-import type { AdjacencyInfo } from "@/utils/stationNameResolver";
+import type { AnimatedTrainState, InterpolatedTrain } from "@/types/train";
 import { drawAnimatedTrains } from "../objects/TrainParticle";
 
-/** 두 역이 인접(직접 연결)한지 판정한다 */
-function isAdjacentStation(a: string, b: string, map: Map<string, AdjacencyInfo>): boolean {
-	if (a === b) return true;
-	const adj = map.get(a);
-	if (adj === undefined) return false;
-	return adj.nexts.includes(b) || adj.prevs.includes(b);
+/** 현재역→다음역 이동에 걸리는 기준 시간 (ms) — 50초에 구간 1개 통과 */
+const SEGMENT_TRAVEL_MS = 50_000;
+
+/** ease-in-out 보간: 출발·도착 시 부드럽게 가감속 */
+function easeInOut(t: number): number {
+	return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 }
 
-/** 기존 열차의 애니메이션 상태를 새 목표로 갱신한다 */
-function updateExistingTrain(
-	existing: AnimatedTrainState,
-	train: InterpolatedTrain,
-	now: number,
-	animDuration: number,
-	adjacencyMap?: Map<string, AdjacencyInfo>,
-	continuousMode = false,
-): void {
-	if (continuousMode) {
-		// 시뮬레이션 모드: 항상 현재 시각 위치에서 부드럽게 연속
-		// stationX/Y 리셋 금지 — 순간이동의 원인
-		existing.startX = existing.currentX;
-		existing.startY = existing.currentY;
-	} else {
-		// 실시간 모드: 스테일 데이터 필터링 + 타겟 변경 여부로 시작점 결정
-		const stationChanged = existing.fromStationId !== train.fromStationId;
-		const hasNewDestination = train.x !== train.stationX || train.y !== train.stationY;
-		const targetChanged = existing.targetX !== train.x || existing.targetY !== train.y;
-
-		if (!hasNewDestination && targetChanged && !stationChanged) {
-			// 같은 역에서 도착/진입 상태인데 타겟이 다름 → 스테일 데이터, 기존 애니메이션 유지
-			return;
-		}
-
-		if (targetChanged) {
-			// 새 목적지(출발 상태) → 역 물리 좌표에서 재시작 (노선 이탈 방지)
-			existing.startX = train.stationX;
-			existing.startY = train.stationY;
-		} else {
-			// 타겟 동일 → 현재 위치에서 부드럽게 계속
-			existing.startX = existing.currentX;
-			existing.startY = existing.currentY;
-		}
+/**
+ * 단일 열차의 진행률을 delta(ms) 만큼 전진하고 현재 좌표를 갱신한다.
+ * isMoving=true이고 progress < 1일 때만 전진한다.
+ * progress는 절대 감소하지 않는다.
+ */
+function advanceTrainState(state: AnimatedTrainState, delta: number): void {
+	if (state.isMoving && state.progress < 1) {
+		state.progress = Math.min(1, state.progress + delta / SEGMENT_TRAVEL_MS);
 	}
-	existing.targetX = train.x;
-	existing.targetY = train.y;
-	existing.startTime = now;
-	existing.direction = train.direction;
-	existing.linear = true;
-
-	const dx = existing.targetX - existing.startX;
-	const dy = existing.targetY - existing.startY;
-	const dist2 = dx * dx + dy * dy;
-
-	if (dist2 < 0.1) {
-		// 같은 좌표 → 정지
-		existing.duration = 0;
-	} else if (
-		adjacencyMap !== undefined &&
-		existing.toStationId !== "" &&
-		!isAdjacentStation(existing.toStationId, train.toStationId, adjacencyMap)
-	) {
-		// 비인접 역 → 텔레포트 (1분 애니메이션 없이 즉시 배치)
-		existing.duration = 0;
-	} else {
-		// 인접 역 → 등속 직선 이동
-		existing.duration = animDuration;
-	}
-
-	// 경로는 항상 2점 (시작→끝)
-	const path: PathPoint[] = [
-		{ x: existing.startX, y: existing.startY },
-		{ x: existing.targetX, y: existing.targetY },
-	];
-	existing.path = path;
-	existing.pathCumulativeDist = [0, Math.sqrt(dist2)];
-
-	// 이동 방향으로 trackAngle 설정
-	if (dist2 > 0.01) {
-		existing.trackAngle = Math.atan2(dy, dx);
-	} else {
-		existing.trackAngle = train.trackAngle;
-	}
-
-	existing.fromStationId = train.fromStationId;
-	existing.toStationId = train.toStationId;
-}
-
-/** 신규 열차의 애니메이션 상태를 생성한다 */
-function createNewTrainState(
-	train: InterpolatedTrain,
-	now: number,
-	continuousMode = false,
-): AnimatedTrainState {
-	// 시뮬레이션: train.x/y = 이미 보간된 실제 위치
-	// 실시간: train.stationX/Y = 역 물리 좌표 (라인 이탈 방지)
-	const initX = continuousMode ? train.x : train.stationX;
-	const initY = continuousMode ? train.y : train.stationY;
-	const path: PathPoint[] = [
-		{ x: initX, y: initY },
-		{ x: initX, y: initY },
-	];
-	return {
-		trainNo: train.trainNo,
-		line: train.line,
-		direction: train.direction,
-		startX: initX,
-		startY: initY,
-		targetX: initX,
-		targetY: initY,
-		currentX: initX,
-		currentY: initY,
-		startTime: now,
-		duration: 0,
-		fromStationId: train.fromStationId,
-		toStationId: train.toStationId,
-		path,
-		pathCumulativeDist: [0, 0],
-		linear: true,
-		trackAngle: train.trackAngle,
-		createdAt: now,
-	};
-}
-
-/** 단일 열차의 프레임별 위치를 보간한다 (항상 2점 직선 선형 보간) */
-function advanceTrainState(state: AnimatedTrainState, now: number): void {
-	if (state.duration <= 0) {
-		state.currentX = state.targetX;
-		state.currentY = state.targetY;
-		return;
-	}
-	const elapsed = now - state.startTime;
-	const t = Math.min(elapsed / state.duration, 1);
-
-	state.currentX = state.startX + (state.targetX - state.startX) * t;
-	state.currentY = state.startY + (state.targetY - state.startY) * t;
+	const t = easeInOut(state.progress);
+	state.currentX = state.fromX + (state.toX - state.fromX) * t;
+	state.currentY = state.fromY + (state.toY - state.fromY) * t;
 }
 
 /**
  * 열차 애니메이션 엔진.
  * PixiJS ticker에서 매 프레임 update()를 호출하여 열차 위치를 보간한다.
  * React 외부에서 동작하며, 폴링으로 새 데이터가 도착하면 setTargets()로 갱신한다.
+ *
+ * 4가지 규칙:
+ * 1. API stationName 역에 배치
+ * 2. direction 기반 다음 역 방향으로 trackAngle 설정
+ * 3. "출발" → 다음 역으로 이동, "도착"/"진입" → 현재 역 대기
+ * 4. 폴 데이터 수신 시 열차 위치 순간이동 없음 (진행률 기반 연속 이동)
  */
 export class TrainAnimator {
 	private states: Map<string, AnimatedTrainState> = new Map();
@@ -155,6 +45,8 @@ export class TrainAnimator {
 	private trainLabelsLayer: Container | null = null;
 	private graphicsPool: Map<string, Graphics> = new Map();
 	private onTrainTap: ((trainNo: string) => void) | null = null;
+	/** 직전 프레임 시각 — delta 계산용 */
+	private lastTickAt = 0;
 
 	/** 렌더링 대상 레이어를 설정한다 */
 	setLayer(layer: Container): void {
@@ -178,46 +70,116 @@ export class TrainAnimator {
 
 	/**
 	 * 새 폴링 데이터가 도착하면 호출한다.
-	 * 기존 열차는 현재 위치 → 새 목표로 애니메이션을 시작한다.
-	 * 신규 열차는 목표 위치에 즉시 배치한다.
-	 * 사라진 열차는 제거한다.
+	 * 기존 열차는 구간·진행률을 유지한 채 갱신하고, 사라진 열차는 fade-out 처리한다.
 	 */
-	setTargets(
-		interpolated: InterpolatedTrain[],
-		duration?: number,
-		adjacencyMap?: Map<string, AdjacencyInfo>,
-	): void {
+	setTargets(interpolated: InterpolatedTrain[]): void {
 		const now = performance.now();
-		const animDuration = duration ?? TRAIN_ANIMATION_DURATION_MS;
-		// duration이 명시적으로 전달되면 시뮬레이션 모드 (연속 보간)
-		const continuousMode = duration !== undefined;
 		const newKeys = new Set<string>();
 
 		for (const train of interpolated) {
 			newKeys.add(train.trainNo);
-			this.upsertTrain(train, now, animDuration, adjacencyMap, continuousMode);
+			this.upsertTrain(train, now);
 		}
 
 		this.markStaleForFadeOut(newKeys);
 	}
 
 	/** 단일 열차의 상태를 갱신하거나 신규 생성한다 */
-	private upsertTrain(
-		train: InterpolatedTrain,
-		now: number,
-		animDuration: number,
-		adjacencyMap: Map<string, AdjacencyInfo> | undefined,
-		continuousMode: boolean,
-	): void {
+	private upsertTrain(train: InterpolatedTrain, now: number): void {
 		const existing = this.states.get(train.trainNo);
-		if (existing !== undefined) {
-			// fade-out 중 복귀 → fade-out 취소
-			if (existing.fadeOutStartedAt !== undefined) {
-				existing.fadeOutStartedAt = undefined;
+
+		if (existing === undefined) {
+			// 신규 열차: 현재 역에 즉시 배치 후 status에 따라 이동 시작
+			const isDepart = train.status === "출발";
+			this.states.set(train.trainNo, {
+				trainNo: train.trainNo,
+				line: train.line,
+				direction: train.direction,
+				currentX: train.stationX,
+				currentY: train.stationY,
+				stationId: train.stationId,
+				toStationId: train.nextStationId,
+				fromX: train.stationX,
+				fromY: train.stationY,
+				toX: isDepart ? train.nextX : train.stationX,
+				toY: isDepart ? train.nextY : train.stationY,
+				progress: 0,
+				isMoving: isDepart,
+				trackAngle: train.trackAngle,
+				createdAt: now,
+				lastPollAt: now,
+			});
+			return;
+		}
+
+		// fade-out 중 복귀 → fade-out 취소
+		existing.fadeOutStartedAt = undefined;
+		existing.lastPollAt = now;
+
+		// 공통 갱신 (항상 실행)
+		existing.direction = train.direction;
+		existing.trackAngle = train.trackAngle;
+
+		const isDepart = train.status === "출발";
+
+		// 구간 분류: 같은 구간 / 다음 구간으로 진행 / 예상 밖 변경
+		const segmentSame =
+			existing.stationId === train.stationId &&
+			existing.toStationId === train.nextStationId;
+		const trainAdvanced = existing.toStationId === train.stationId;
+
+		if (segmentSame) {
+			// ── 같은 구간 ──────────────────────────────────────────────────────
+			if (isDepart) {
+				// 출발: 목표 좌표 동기화 후 이동 계속 (progress 유지 — 재시작 없음)
+				existing.toX = train.nextX;
+				existing.toY = train.nextY;
+				existing.isMoving = true;
 			}
-			updateExistingTrain(existing, train, now, animDuration, adjacencyMap, continuousMode);
+			// 도착/진입 + 같은 구간: 현재 이동 상태 유지
+			//   이동 중이면 → 비정상 데이터(스테일) 무시, 계속 이동
+			//   이미 정차 중이면 → 정차 유지
+		} else if (trainAdvanced) {
+			// ── 다음 구간으로 정상 진행 ────────────────────────────────────────
+			existing.stationId = train.stationId;
+			existing.toStationId = train.nextStationId;
+
+			if (isDepart) {
+				// 출발: 출발역 좌표로 스냅 후 다음 역으로 이동 (노선 이탈 방지)
+				existing.fromX = train.stationX;
+				existing.fromY = train.stationY;
+				existing.toX = train.nextX;
+				existing.toY = train.nextY;
+				existing.currentX = train.stationX;
+				existing.currentY = train.stationY;
+				existing.progress = 0;
+				existing.isMoving = true;
+				existing.trailDirty = true;
+			} else {
+				// 도착/진입: 전진 방향 스냅 (열차가 실제로 역에 도착한 상태)
+				existing.fromX = train.stationX;
+				existing.fromY = train.stationY;
+				existing.toX = train.stationX;
+				existing.toY = train.stationY;
+				existing.currentX = train.stationX;
+				existing.currentY = train.stationY;
+				existing.progress = 0;
+				existing.isMoving = false;
+				existing.trailDirty = true;
+			}
 		} else {
-			this.states.set(train.trainNo, createNewTrainState(train, now, continuousMode));
+			// ── 예상 밖 구간 변경 (API 이상, 2+ 역 점프 등) ──────────────────
+			existing.stationId = train.stationId;
+			existing.toStationId = train.nextStationId;
+			existing.fromX = train.stationX;
+			existing.fromY = train.stationY;
+			existing.toX = isDepart ? train.nextX : train.stationX;
+			existing.toY = isDepart ? train.nextY : train.stationY;
+			existing.currentX = train.stationX;
+			existing.currentY = train.stationY;
+			existing.progress = 0;
+			existing.isMoving = isDepart;
+			existing.trailDirty = true;
 		}
 	}
 
@@ -248,13 +210,15 @@ export class TrainAnimator {
 	}
 
 	/**
-	 * 매 프레임 호출 — 등속 직선 보간으로 열차 위치를 갱신하고 렌더링한다.
+	 * 매 프레임 호출 — 진행률 기반으로 열차 위치를 갱신하고 렌더링한다.
 	 * PixiJS ticker의 콜백으로 등록한다.
 	 */
 	update(): void {
 		if (this.trainsLayer === null) return;
 
 		const now = performance.now();
+		const delta = this.lastTickAt === 0 ? 0 : now - this.lastTickAt;
+		this.lastTickAt = now;
 
 		// fade-out 완료된 열차 제거
 		this.removeCompletedFadeOuts(now);
@@ -262,7 +226,7 @@ export class TrainAnimator {
 		const trainList: AnimatedTrainState[] = [];
 
 		for (const state of this.states.values()) {
-			advanceTrainState(state, now);
+			advanceTrainState(state, delta);
 			trainList.push(state);
 		}
 
@@ -289,6 +253,7 @@ export class TrainAnimator {
 		if (this.trainsLayer !== null) {
 			this.trainsLayer.removeChildren();
 		}
+		this.lastTickAt = 0;
 	}
 
 	/** 현재 애니메이션 중인 열차 수 */

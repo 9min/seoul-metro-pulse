@@ -30,8 +30,7 @@ export function StationPanel() {
 	const stationIdSet = new Set(allStationIds);
 
 	const approachingTrains = interpolatedTrains
-		.filter((t) => stationIdSet.has(t.toStationId))
-		.sort((a, b) => b.progress - a.progress)
+		.filter((t) => stationIdSet.has(t.nextStationId))
 		.slice(0, 5);
 
 	return (
@@ -84,12 +83,7 @@ export function StationPanel() {
 										<span className="text-xs text-white">{train.trainNo}</span>
 										<span className="ml-auto text-xs text-gray-400">{train.direction}</span>
 									</div>
-									<div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-										<div
-											className="h-full rounded-full bg-white/60"
-											style={{ width: `${Math.round(train.progress * 100)}%` }}
-										/>
-									</div>
+									<span className="text-xs text-white/40">{train.status}</span>
 								</li>
 							))}
 						</ul>

@@ -16,8 +16,8 @@ export function TrainPanel() {
 	const train = interpolatedTrains.find((t) => t.trainNo === selectedTrainNo);
 	if (train === undefined) return null;
 
-	const fromStation = stationMap.get(train.fromStationId);
-	const toStation = stationMap.get(train.toStationId);
+	const fromStation = stationMap.get(train.stationId);
+	const toStation = stationMap.get(train.nextStationId);
 
 	return (
 		<>
@@ -52,22 +52,11 @@ export function TrainPanel() {
 					<span className="text-xs text-gray-400">{train.direction}</span>
 				</div>
 				<div className="mt-3 text-xs text-gray-300">
-					<span>{fromStation?.name ?? train.fromStationId}</span>
+					<span>{fromStation?.name ?? train.stationId}</span>
 					<span className="mx-2 text-gray-500">→</span>
-					<span>{toStation?.name ?? train.toStationId}</span>
+					<span>{toStation?.name ?? train.nextStationId}</span>
 				</div>
-				<div className="mt-3">
-					<div className="mb-1 flex justify-between text-xs text-gray-400">
-						<span>진행률</span>
-						<span>{Math.round(train.progress * 100)}%</span>
-					</div>
-					<div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-						<div
-							className="h-full rounded-full bg-white/60"
-							style={{ width: `${Math.round(train.progress * 100)}%` }}
-						/>
-					</div>
-				</div>
+				<div className="mt-2 text-xs text-gray-500">{train.status}</div>
 			</div>
 		</>
 	);

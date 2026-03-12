@@ -27,6 +27,10 @@ export function updateTrailQueues(
 			queue = { points: [], line: train.line };
 			trailMap.set(train.trainNo, queue);
 		}
+		if (train.trailDirty) {
+			queue.points = [];
+			train.trailDirty = false;
+		}
 		queue.points.push({ x: train.currentX, y: train.currentY });
 		if (queue.points.length > maxPoints) {
 			queue.points.shift();

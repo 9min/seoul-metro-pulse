@@ -54,10 +54,10 @@ function parseDirection(destination: string, line: number): "상행" | "하행" 
 	return "상행";
 }
 
-/** CSS 클래스에서 방향을 추출한다 (T0213_Y_1_v2 → "1" = 상행) */
+/** CSS 클래스에서 방향을 추출한다 (T0213_Y_1_v2 → "1" = 하행, "2" = 상행) */
 function directionFromClass(className: string): "상행" | "하행" {
 	const match = className.match(/_(\d)_v2/);
-	if (match?.[1] === "2") return "하행";
+	if (match?.[1] === "1") return "하행";
 	return "상행";
 }
 
@@ -92,6 +92,9 @@ async function fetchSmssLine(line: number): Promise<SmssTrainRaw[]> {
 			if (parsed === null) return;
 
 			parsed.direction = directionFromClass(className);
+			console.log(
+				`[SMSS-DEBUG] line=${line} class="${className}" title="${title}" → dir=${parsed.direction} station=${parsed.stationName}`,
+			);
 			trains.push(parsed);
 		});
 

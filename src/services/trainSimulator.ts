@@ -6,7 +6,6 @@ import {
 import type { ScreenCoord } from "@/types/map";
 import type { StationLink } from "@/types/station";
 import type { InterpolatedTrain } from "@/types/train";
-import { lerp } from "@/utils/trainInterpolation";
 
 /** 시뮬레이션 열차 내부 상태 */
 interface SimTrain {
@@ -249,14 +248,14 @@ export class TrainSimulator {
 		return {
 			trainNo: train.trainNo,
 			line: train.line,
-			x: lerp(fromCoord.x, toCoord.x, train.progress),
-			y: lerp(fromCoord.y, toCoord.y, train.progress),
+			direction: train.direction,
+			status: "출발" as const,
+			stationId: fromId,
 			stationX: fromCoord.x,
 			stationY: fromCoord.y,
-			direction: train.direction,
-			progress: train.progress,
-			fromStationId: fromId,
-			toStationId: toId,
+			nextStationId: toId,
+			nextX: toCoord.x,
+			nextY: toCoord.y,
 			trackAngle: Math.atan2(toCoord.y - fromCoord.y, toCoord.x - fromCoord.x),
 		};
 	}
