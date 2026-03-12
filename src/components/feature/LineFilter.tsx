@@ -74,7 +74,12 @@ export function LineFilter() {
 				>
 					{allActive ? "전체해제" : "전체"}
 				</button>
-			</div>
+				</div>
+			{mode === "live" && (
+				<p className="hidden select-none text-center text-xs text-white/50 sm:block">
+					실시간 위치는 공공 API 기반이며 일부 오차가 있을 수 있습니다
+				</p>
+			)}
 		</div>
 	);
 }

@@ -47,6 +47,7 @@ export function HUD() {
 			</div>
 
 			{/* 운행 현황 카드 */}
+			<div className="flex items-start gap-2">
 			<div className={`${OVERLAY_PANEL} px-3 py-2 sm:w-48 sm:px-4 sm:py-3`}>
 				<div className="mb-1.5 flex items-center gap-2 sm:mb-2">
 					{!isSimulation && isPollingActive ? (
@@ -75,6 +76,12 @@ export function HUD() {
 				{!isSimulation && (
 					<p className="mt-1 hidden text-xs text-gray-600 sm:block">서울시 공공데이터 API</p>
 				)}
+			</div>
+			{!isSimulation && (
+				<p className="w-52 shrink-0 select-none pt-1 text-[12px] leading-snug text-white/50 sm:hidden">
+					실시간 위치는 공공 API 기반이며<br />일부 오차가 있을 수 있습니다
+				</p>
+			)}
 			</div>
 
 			{/* 에러 배너 */}
