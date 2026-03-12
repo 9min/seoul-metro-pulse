@@ -121,8 +121,7 @@ export class TrainAnimator {
 
 		// 구간 분류: 같은 구간 / 다음 구간으로 진행 / 예상 밖 변경
 		const segmentSame =
-			existing.stationId === train.stationId &&
-			existing.toStationId === train.nextStationId;
+			existing.stationId === train.stationId && existing.toStationId === train.nextStationId;
 		const trainAdvanced = existing.toStationId === train.stationId;
 
 		if (segmentSame) {

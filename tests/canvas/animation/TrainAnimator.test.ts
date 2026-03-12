@@ -226,11 +226,11 @@ describe("TrainAnimator", () => {
 		const stateAfter = animator.getTrainState("1001");
 
 		// fromX는 출발역(S00) 좌표(50)로 스냅 — 노선 이탈 방지
-		expect(stateAfter?.fromX).toBe(50);   // B역 좌표 = train.stationX
+		expect(stateAfter?.fromX).toBe(50); // B역 좌표 = train.stationX
 		expect(stateAfter?.fromY).toBe(150);
 		expect(stateAfter?.currentX).toBe(50);
 		expect(stateAfter?.currentY).toBe(150);
-		expect(stateAfter?.toX).toBe(10);    // 새 목표역
+		expect(stateAfter?.toX).toBe(10); // 새 목표역
 		expect(stateAfter?.progress).toBe(0); // 새 구간 시작
 		expect(stateAfter?.isMoving).toBe(true);
 		expect(stateAfter?.stationId).toBe("S00");

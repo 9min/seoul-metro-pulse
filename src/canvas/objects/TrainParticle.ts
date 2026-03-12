@@ -311,12 +311,7 @@ export function drawAnimatedTrains(
 
 		updateTrainRotation(gfx, train, isNew);
 
-		let alpha = computeTrainAlpha(
-			train.toStationId,
-			selectedStationId,
-			train.line,
-			activeLines,
-		);
+		let alpha = computeTrainAlpha(train.toStationId, selectedStationId, train.line, activeLines);
 
 		// 페이드아웃 처리
 		if (train.fadeOutStartedAt !== undefined) {

@@ -3,11 +3,7 @@ import { computeLinkCongestion, congestionColor } from "@/canvas/objects/Congest
 import type { StationLink } from "@/types/station";
 import type { AnimatedTrainState } from "@/types/train";
 
-function makeTrain(
-	trainNo: string,
-	stationId: string,
-	toStationId: string,
-): AnimatedTrainState {
+function makeTrain(trainNo: string, stationId: string, toStationId: string): AnimatedTrainState {
 	return {
 		trainNo,
 		line: 1,
