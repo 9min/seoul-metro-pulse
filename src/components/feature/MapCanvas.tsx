@@ -8,7 +8,11 @@ import { computeLinkCongestion, drawCongestionHeatmap } from "@/canvas/objects/C
 import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
 import { drawRoute, updateRoutePulse } from "@/canvas/objects/RoutePath";
 import { drawStationLabels, updateLabelVisibility } from "@/canvas/objects/StationLabel";
-import { drawAllStations, updateStationAlpha, updateStationSelectionRing } from "@/canvas/objects/StationNode";
+import {
+	drawAllStations,
+	updateStationAlpha,
+	updateStationSelectionRing,
+} from "@/canvas/objects/StationNode";
 import {
 	drawTrails,
 	pruneTrails,
@@ -261,13 +265,7 @@ export function MapCanvas() {
 		scene.stationsLayer.alpha = hasRoute ? 0.15 : 1.0;
 		updateLinksAlpha(scene.linksLayer, activeLines);
 		if (!hasRoute) {
-			updateStationAlpha(
-				scene.stationsLayer,
-				STATIONS,
-				null,
-				activeLines,
-				transferMap,
-			);
+			updateStationAlpha(scene.stationsLayer, STATIONS, null, activeLines, transferMap);
 		}
 	}, [scene, activeLines, route]);
 
