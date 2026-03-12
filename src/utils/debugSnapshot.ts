@@ -33,11 +33,11 @@ interface TrainSnapshot {
 	} | null;
 	/** 보간 결과 */
 	interpolated: {
-		x: number;
-		y: number;
-		progress: number;
-		fromStationId: string;
-		toStationId: string;
+		status: string;
+		stationId: string;
+		stationX: number;
+		stationY: number;
+		nextStationId: string;
 		trackAngle: number;
 		direction: string;
 	} | null;
@@ -45,17 +45,16 @@ interface TrainSnapshot {
 	animated: {
 		currentX: number;
 		currentY: number;
-		targetX: number;
-		targetY: number;
-		startX: number;
-		startY: number;
-		fromStationId: string;
+		fromX: number;
+		fromY: number;
+		toX: number;
+		toY: number;
+		progress: number;
+		isMoving: boolean;
+		stationId: string;
 		toStationId: string;
-		trackAngle: number | undefined;
+		trackAngle: number;
 		direction: string;
-		duration: number;
-		pathLength: number;
-		elapsed: number;
 	} | null;
 	/** 폴링 이력 */
 	pollHistory: {
@@ -67,7 +66,6 @@ interface TrainSnapshot {
 export function dumpDebugSnapshot(): void {
 	const store = useTrainStore.getState();
 	const { rawPositions, interpolatedTrains, prevPollMap } = store;
-	const now = performance.now();
 
 	// trainNo → 각 단계 데이터 맵핑
 	const rawMap = new Map(rawPositions.map((t) => [t.trainNo, t]));
@@ -100,11 +98,11 @@ export function dumpDebugSnapshot(): void {
 				: null,
 			interpolated: interp
 				? {
-						x: Math.round(interp.x * 10) / 10,
-						y: Math.round(interp.y * 10) / 10,
-						progress: interp.progress,
-						fromStationId: interp.fromStationId,
-						toStationId: interp.toStationId,
+						status: interp.status,
+						stationId: interp.stationId,
+						stationX: Math.round(interp.stationX * 10) / 10,
+						stationY: Math.round(interp.stationY * 10) / 10,
+						nextStationId: interp.nextStationId,
 						trackAngle: Math.round(interp.trackAngle * 1000) / 1000,
 						direction: interp.direction,
 					}
@@ -113,18 +111,16 @@ export function dumpDebugSnapshot(): void {
 				? {
 						currentX: Math.round(anim.currentX * 10) / 10,
 						currentY: Math.round(anim.currentY * 10) / 10,
-						targetX: Math.round(anim.targetX * 10) / 10,
-						targetY: Math.round(anim.targetY * 10) / 10,
-						startX: Math.round(anim.startX * 10) / 10,
-						startY: Math.round(anim.startY * 10) / 10,
-						fromStationId: anim.fromStationId,
+						fromX: Math.round(anim.fromX * 10) / 10,
+						fromY: Math.round(anim.fromY * 10) / 10,
+						toX: Math.round(anim.toX * 10) / 10,
+						toY: Math.round(anim.toY * 10) / 10,
+						progress: Math.round(anim.progress * 1000) / 1000,
+						isMoving: anim.isMoving,
+						stationId: anim.stationId,
 						toStationId: anim.toStationId,
-						trackAngle:
-							anim.trackAngle !== undefined ? Math.round(anim.trackAngle * 1000) / 1000 : undefined,
+						trackAngle: Math.round(anim.trackAngle * 1000) / 1000,
 						direction: anim.direction,
-						duration: anim.duration,
-						pathLength: anim.path.length,
-						elapsed: Math.round(now - anim.startTime),
 					}
 				: null,
 			pollHistory: poll ? { missedCount: poll.missedCount } : null,
@@ -156,23 +152,12 @@ export function dumpDebugSnapshot(): void {
 		if (s.interpolated !== null && s.animated === null) {
 			summary.anomalies.push(`${s.trainNo}: interpolated 있으나 animated 없음 (animator 미등록?)`);
 		}
-		if (s.animated !== null && s.interpolated !== null) {
-			// 보간 좌표와 애니메이션 목표 좌표 불일치 감지
-			const dx = s.animated.targetX - s.interpolated.x;
-			const dy = s.animated.targetY - s.interpolated.y;
-			const dist = Math.sqrt(dx * dx + dy * dy);
-			if (dist > 50) {
-				summary.anomalies.push(
-					`${s.trainNo}: 보간↔애니메이션 목표 거리 ${dist.toFixed(0)}px (역방향 보정?)`,
-				);
-			}
-		}
 		if (s.animated !== null) {
 			// 현재 위치와 목표 위치 방향 vs trackAngle 불일치
-			const dx = s.animated.targetX - s.animated.currentX;
-			const dy = s.animated.targetY - s.animated.currentY;
+			const dx = s.animated.toX - s.animated.currentX;
+			const dy = s.animated.toY - s.animated.currentY;
 			const moveDist = Math.sqrt(dx * dx + dy * dy);
-			if (moveDist > 5 && s.animated.trackAngle !== undefined) {
+			if (moveDist > 5) {
 				const moveAngle = Math.atan2(dy, dx);
 				const angleDiff = Math.abs(moveAngle - s.animated.trackAngle);
 				const normalized = angleDiff > Math.PI ? Math.PI * 2 - angleDiff : angleDiff;

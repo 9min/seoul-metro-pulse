@@ -98,28 +98,17 @@ const HEADLIGHT_PULSE_MAX = 1.0;
 /** 프레임별 회전 보간 계수 (60fps 기준 약 8~10프레임에 90% 수렴) */
 const ROTATION_LERP_FACTOR = 0.12;
 
-/** 열차 이동 방향 각도(라디안)를 반환한다. 정지 시 NaN. */
-function computeTrainAngle(train: AnimatedTrainState): number {
-	const dx = train.targetX - train.startX;
-	const dy = train.targetY - train.startY;
-	if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return Number.NaN;
-	return Math.atan2(dy, dx);
-}
-
 const ALL_LINES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
-/** 선택 상태 및 노선 필터에 따른 열차 alpha 값을 반환한다 (비활성 노선 > 역 선택 > 열차 선택 > 기본) */
+/** 선택 상태 및 노선 필터에 따른 열차 alpha 값을 반환한다 (비활성 노선 > 역 선택 > 기본) */
 function computeTrainAlpha(
-	trainNo: string,
 	toStationId: string,
-	selectedTrainNo: string | null,
 	selectedStationId: string | null,
 	line: number,
 	activeLines: Set<number>,
 ): number {
 	if (!activeLines.has(line)) return 0;
 	if (selectedStationId !== null) return toStationId === selectedStationId ? 1.0 : 0.15;
-	if (selectedTrainNo !== null) return trainNo === selectedTrainNo ? 1.0 : 0.15;
 	return 1.0;
 }
 
@@ -142,19 +131,17 @@ function registerTrain(
 	return created;
 }
 
-/** 열차 캡슐의 회전을 갱신한다 */
+/** 열차 캡슐의 회전을 갱신한다. 항상 trackAngle(다음역 방향)을 목표로 보간한다. */
 function updateTrainRotation(gfx: Graphics, train: AnimatedTrainState, isNew: boolean): void {
-	if (isNew && train.trackAngle !== undefined) {
-		gfx.rotation = train.trackAngle;
+	const targetAngle = train.trackAngle;
+	if (isNew) {
+		gfx.rotation = targetAngle;
 		return;
 	}
-	const angle = train.trackAngle !== undefined ? train.trackAngle : computeTrainAngle(train);
-	if (!Number.isNaN(angle)) {
-		const diff = normalizeAngle(angle - gfx.rotation);
-		const MAX_DELTA = Math.PI / 2;
-		const clamped = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, diff));
-		gfx.rotation += clamped * ROTATION_LERP_FACTOR;
-	}
+	const diff = normalizeAngle(targetAngle - gfx.rotation);
+	const MAX_DELTA = Math.PI / 2;
+	const clamped = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, diff));
+	gfx.rotation += clamped * ROTATION_LERP_FACTOR;
 }
 
 /** 헤드라이트 펄스 애니메이션을 갱신한다 */
@@ -177,7 +164,7 @@ function updateMovingArrows(gfx: Graphics, train: AnimatedTrainState, now: numbe
 	const arrowGfx = gfx.getChildByLabel("movingArrows");
 	if (arrowGfx === null || !(arrowGfx instanceof Graphics)) return;
 
-	const isMoving = train.duration > 0 && now - train.startTime < train.duration;
+	const isMoving = train.isMoving;
 	const isFadingOut = train.fadeOutStartedAt !== undefined;
 
 	if (!isMoving || isFadingOut) {
@@ -324,14 +311,7 @@ export function drawAnimatedTrains(
 
 		updateTrainRotation(gfx, train, isNew);
 
-		let alpha = computeTrainAlpha(
-			train.trainNo,
-			train.toStationId,
-			selectedTrainNo,
-			selectedStationId,
-			train.line,
-			activeLines,
-		);
+		let alpha = computeTrainAlpha(train.toStationId, selectedStationId, train.line, activeLines);
 
 		// 페이드아웃 처리
 		if (train.fadeOutStartedAt !== undefined) {

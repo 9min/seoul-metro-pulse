@@ -26,8 +26,8 @@ export interface AdjacencyInfo {
 
 /**
  * links 데이터를 기반으로 역별 인접 역 정보를 생성한다.
- * source→target 방향을 상행으로 간주한다.
- * 역의 prev = 이전 역(source 방향), next = 다음 역(target 방향)
+ * source→target 방향은 역번호 증가 방향이다. 상행=prevs, 하행=nexts.
+ * 역의 prev = 이전 역(source 방향, 역번호 감소), next = 다음 역(target 방향, 역번호 증가)
  */
 export function buildAdjacencyMap(links: StationLink[]): Map<string, AdjacencyInfo> {
 	const adjacencyMap = new Map<string, AdjacencyInfo>();

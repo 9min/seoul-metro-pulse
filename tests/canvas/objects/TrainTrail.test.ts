@@ -7,23 +7,31 @@ import {
 } from "@/canvas/objects/TrainTrail";
 import type { AnimatedTrainState } from "@/types/train";
 
-function makeTrain(trainNo: string, line: number, x: number, y: number): AnimatedTrainState {
+function makeTrain(
+	trainNo: string,
+	line: number,
+	x: number,
+	y: number,
+	trailDirty?: boolean,
+): AnimatedTrainState {
 	return {
 		trainNo,
 		line,
 		direction: "상행",
-		startX: x,
-		startY: y,
-		targetX: x,
-		targetY: y,
 		currentX: x,
 		currentY: y,
-		startTime: 0,
-		duration: 0,
-		fromStationId: "s1",
+		stationId: "s1",
 		toStationId: "s2",
-		path: [{ x, y }],
-		pathCumulativeDist: [0],
+		fromX: x,
+		fromY: y,
+		toX: x,
+		toY: y,
+		progress: 0,
+		isMoving: false,
+		trackAngle: 0,
+		createdAt: 0,
+		lastPollAt: 0,
+		trailDirty,
 	};
 }
 
@@ -68,6 +76,52 @@ describe("TrainTrail", () => {
 			updateTrailQueues(trailMap, trains, 0, 1, 15);
 			expect(trailMap.has("NEW")).toBe(true);
 			expect(trailMap.get("NEW")?.line).toBe(2);
+		});
+
+		it("trailDirty=true이면 기존 포인트를 비우고 새 포인트만 추가한다", () => {
+			const trailMap = new Map<string, TrailQueue>();
+
+			// 먼저 포인트를 3개 쌓는다
+			for (let i = 0; i < 3; i++) {
+				const trains = [makeTrain("T1", 1, i * 10, i * 10)];
+				updateTrailQueues(trailMap, trains, i * 4, 4, 15);
+			}
+			expect(trailMap.get("T1")?.points).toHaveLength(3);
+
+			// trailDirty=true 상태로 스냅된 새 포인트 추가
+			const dirtyTrain = makeTrain("T1", 1, 999, 999, true);
+			updateTrailQueues(trailMap, [dirtyTrain], 12, 4, 15);
+
+			const queue = trailMap.get("T1");
+			// 이전 3개 포인트가 flush되고 새 포인트 1개만 남아야 한다
+			expect(queue?.points).toHaveLength(1);
+			expect(queue?.points[0]).toEqual({ x: 999, y: 999 });
+		});
+
+		it("trailDirty flush 후 플래그가 false로 초기화된다", () => {
+			const trailMap = new Map<string, TrailQueue>();
+			const train = makeTrain("T1", 1, 100, 100, true);
+
+			updateTrailQueues(trailMap, [train], 0, 4, 15);
+
+			// updateTrailQueues가 train.trailDirty를 false로 초기화했어야 한다
+			expect(train.trailDirty).toBe(false);
+		});
+
+		it("trailDirty=false이면 기존 포인트를 유지하고 새 포인트를 추가한다", () => {
+			const trailMap = new Map<string, TrailQueue>();
+
+			// 포인트 2개 쌓기
+			for (let i = 0; i < 2; i++) {
+				const trains = [makeTrain("T1", 1, i * 10, i * 10)];
+				updateTrailQueues(trailMap, trains, i * 4, 4, 15);
+			}
+
+			// trailDirty 없음 → 기존 포인트 유지
+			const normalTrain = makeTrain("T1", 1, 50, 50, false);
+			updateTrailQueues(trailMap, [normalTrain], 8, 4, 15);
+
+			expect(trailMap.get("T1")?.points).toHaveLength(3);
 		});
 	});
 

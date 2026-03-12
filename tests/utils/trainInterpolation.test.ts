@@ -40,29 +40,25 @@ describe("lerp", () => {
 });
 
 describe("interpolateTrainPosition", () => {
-	it("현재역 좌표를 그대로 반환한다", () => {
+	it("stationX/Y는 현재 역 좌표이다", () => {
 		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP, ADJ_MAP);
 		expect(result).not.toBeNull();
-		expect(result?.x).toBe(200);
-		expect(result?.y).toBe(300);
+		// BASE_TRAIN: S02(200,300)
+		expect(result?.stationX).toBe(200);
+		expect(result?.stationY).toBe(300);
 	});
 
-	it("progress는 항상 0이다", () => {
+	it("stationId는 현재 역 ID이다", () => {
 		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP, ADJ_MAP);
-		expect(result?.progress).toBe(0);
+		expect(result?.stationId).toBe("S02");
 	});
 
-	it("fromStationId는 현재역, toStationId는 진행 방향의 다음역이다", () => {
-		// BASE_TRAIN: S02, 상행 → prev 방향인 S01이 toStationId
-		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP, ADJ_MAP);
-		expect(result?.fromStationId).toBe("S02");
-		expect(result?.toStationId).toBe("S01");
-	});
-
-	it("adjacencyMap 없이 호출하면 toStationId가 현재역이다", () => {
-		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP);
-		expect(result?.fromStationId).toBe("S02");
-		expect(result?.toStationId).toBe("S02");
+	it("status가 그대로 전달된다", () => {
+		for (const status of ["진입", "도착", "출발"] as const) {
+			const train: TrainPosition = { ...BASE_TRAIN, status };
+			const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
+			expect(result?.status).toBe(status);
+		}
 	});
 
 	it("존재하지 않는 역 ID는 null을 반환한다", () => {
@@ -71,45 +67,35 @@ describe("interpolateTrainPosition", () => {
 		expect(result).toBeNull();
 	});
 
-	it("진입/도착 상태에서 현재역 좌표를 반환한다", () => {
-		// BASE_TRAIN: S02(200,300), 상행
-		for (const status of ["진입", "도착"] as const) {
-			const train: TrainPosition = { ...BASE_TRAIN, status };
-			const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
-			expect(result?.x).toBe(200);
-			expect(result?.y).toBe(300);
-		}
+	it("상행 열차의 nextStationId는 prevs[0] (S01)이다", () => {
+		// BASE_TRAIN: S02, 상행 → prev = S01
+		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP, ADJ_MAP);
+		expect(result?.nextStationId).toBe("S01");
 	});
 
-	it("출발 상태에서 다음역 좌표를 반환한다", () => {
-		// BASE_TRAIN: S02(200,300), 상행 → prev 방향인 S01(100,200)이 다음역
-		const train: TrainPosition = { ...BASE_TRAIN, status: "출발" };
+	it("하행 열차의 nextStationId는 nexts[0] (S03)이다", () => {
+		const train: TrainPosition = { ...BASE_TRAIN, direction: "하행" };
 		const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
-		expect(result?.x).toBe(100);
-		expect(result?.y).toBe(200);
+		expect(result?.nextStationId).toBe("S03");
 	});
 
-	it("출발 상태에서 fromStationId는 현재역, toStationId는 다음역이다", () => {
-		// BASE_TRAIN: S02, 상행 → toStationId = S01
-		const train: TrainPosition = { ...BASE_TRAIN, status: "출발" };
-		const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
-		expect(result?.fromStationId).toBe("S02");
-		expect(result?.toStationId).toBe("S01");
+	it("nextX/Y는 다음 역 좌표이다", () => {
+		// BASE_TRAIN: S02, 상행 → next = S01(100,200)
+		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP, ADJ_MAP);
+		expect(result?.nextX).toBe(100);
+		expect(result?.nextY).toBe(200);
 	});
 
-	it("종착역에서 출발 상태이면 현재역 좌표를 유지한다", () => {
-		// S01은 prevs=[] → 상행 시 다음역 없음 → targetCoord = currentCoord
-		const train: TrainPosition = { ...BASE_TRAIN, stationId: "S01", status: "출발" };
-		const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
-		expect(result?.x).toBe(100);
-		expect(result?.y).toBe(200);
+	it("adjacencyMap 없이 호출하면 nextStationId가 현재역과 동일하다", () => {
+		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP);
+		expect(result?.stationId).toBe("S02");
+		expect(result?.nextStationId).toBe("S02");
 	});
 
-	it("adjacencyMap 없이 출발 상태이면 현재역 좌표를 반환한다", () => {
-		const train: TrainPosition = { ...BASE_TRAIN, status: "출발" };
-		const result = interpolateTrainPosition(train, SCREEN_MAP);
-		expect(result?.x).toBe(200);
-		expect(result?.y).toBe(300);
+	it("adjacencyMap 없이 호출하면 nextX/Y가 현재역 좌표와 동일하다", () => {
+		const result = interpolateTrainPosition(BASE_TRAIN, SCREEN_MAP);
+		expect(result?.nextX).toBe(result?.stationX);
+		expect(result?.nextY).toBe(result?.stationY);
 	});
 
 	it("adjacencyMap 없이 호출하면 trackAngle이 0이다", () => {
@@ -117,24 +103,13 @@ describe("interpolateTrainPosition", () => {
 		expect(result?.trackAngle).toBe(0);
 	});
 
-	it("출발 상태에서도 stationX/Y는 현재역 좌표이다", () => {
-		// BASE_TRAIN: S02(200,300), 상행 출발 → x/y = S01(100,200), stationX/Y = S02(200,300)
-		const train: TrainPosition = { ...BASE_TRAIN, status: "출발" };
+	it("종착역에서 다음역 없으면 nextStationId가 현재역이다", () => {
+		// S01은 prevs=[] → 상행 시 다음역 없음
+		const train: TrainPosition = { ...BASE_TRAIN, stationId: "S01", status: "출발" };
 		const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
-		expect(result?.x).toBe(100); // 다음역(S01) 좌표
-		expect(result?.y).toBe(200);
-		expect(result?.stationX).toBe(200); // 현재역(S02) 좌표
-		expect(result?.stationY).toBe(300);
-	});
-
-	it("진입/도착 상태에서 stationX/Y와 x/y는 동일하다", () => {
-		// 진입/도착: x/y = 현재역 좌표, stationX/Y도 현재역 좌표
-		for (const status of ["진입", "도착"] as const) {
-			const train: TrainPosition = { ...BASE_TRAIN, status };
-			const result = interpolateTrainPosition(train, SCREEN_MAP, ADJ_MAP);
-			expect(result?.stationX).toBe(result?.x);
-			expect(result?.stationY).toBe(result?.y);
-		}
+		expect(result?.nextStationId).toBe("S01");
+		expect(result?.nextX).toBe(100);
+		expect(result?.nextY).toBe(200);
 	});
 });
 

@@ -1,12 +1,13 @@
 import {
+	SEGMENT_TRAVEL_MS,
 	SIM_DWELL_TICKS,
 	SIM_TERMINAL_DWELL_TICKS,
+	SIMULATION_TICK_MS,
 	SIMULATION_TRAINS_PER_LINE,
 } from "@/constants/mapConfig";
 import type { ScreenCoord } from "@/types/map";
 import type { StationLink } from "@/types/station";
 import type { InterpolatedTrain } from "@/types/train";
-import { lerp } from "@/utils/trainInterpolation";
 
 /** 시뮬레이션 열차 내부 상태 */
 interface SimTrain {
@@ -26,8 +27,8 @@ interface SimTrain {
 /** 노선별 경로 (역 ID 배열) */
 type RouteMap = Map<number, string[]>;
 
-/** 틱당 진행률 증가량 — 1.5배속 (약 2틱에 한 역 구간 이동) */
-const PROGRESS_PER_TICK = 0.525;
+/** 틱당 진행률 증가량 — SEGMENT_TRAVEL_MS / SIMULATION_TICK_MS의 역수 */
+const PROGRESS_PER_TICK = SIMULATION_TICK_MS / SEGMENT_TRAVEL_MS;
 
 /** 링크 데이터로부터 인접 리스트를 구성한다 */
 function buildAdjacency(lineLinks: StationLink[]): Map<string, string[]> {
@@ -249,14 +250,14 @@ export class TrainSimulator {
 		return {
 			trainNo: train.trainNo,
 			line: train.line,
-			x: lerp(fromCoord.x, toCoord.x, train.progress),
-			y: lerp(fromCoord.y, toCoord.y, train.progress),
+			direction: train.direction,
+			status: "출발" as const,
+			stationId: fromId,
 			stationX: fromCoord.x,
 			stationY: fromCoord.y,
-			direction: train.direction,
-			progress: train.progress,
-			fromStationId: fromId,
-			toStationId: toId,
+			nextStationId: toId,
+			nextX: toCoord.x,
+			nextY: toCoord.y,
 			trackAngle: Math.atan2(toCoord.y - fromCoord.y, toCoord.x - fromCoord.x),
 		};
 	}

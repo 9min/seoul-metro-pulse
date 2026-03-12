@@ -26,7 +26,7 @@ export function computeLinkCongestion(
 	const congestion = new Map<string, number>();
 
 	for (const train of animatedTrains) {
-		const key = linkKey(train.fromStationId, train.toStationId);
+		const key = linkKey(train.stationId, train.toStationId);
 		if (!validLinks.has(key)) continue;
 		congestion.set(key, (congestion.get(key) ?? 0) + 1);
 	}

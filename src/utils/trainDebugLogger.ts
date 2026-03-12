@@ -87,22 +87,21 @@ export function logPollSummary(source: string, rawCount: number, resolvedCount: 
 	);
 }
 
-/** 보간 단계: progress, from/to */
+/** 보간 단계: status, from/to */
 export function logInterpolation(
 	trainNo: string,
 	details: {
-		progress: number;
-		fromStationId: string;
-		toStationId: string;
-		x: number;
-		y: number;
 		status: string;
+		stationId: string;
+		nextStationId: string;
+		stationX: number;
+		stationY: number;
 	},
 ): void {
 	if (!shouldLog(trainNo)) return;
-	const { progress, fromStationId, toStationId, x, y, status } = details;
+	const { status, stationId, nextStationId, stationX, stationY } = details;
 	console.warn(
-		`${PREFIX} [INTERP] 열차=${trainNo} 상태=${status} progress=${progress.toFixed(3)} from=${fromStationId} to=${toStationId} pos=(${x.toFixed(1)},${y.toFixed(1)})`,
+		`${PREFIX} [INTERP] 열차=${trainNo} 상태=${status} station=${stationId} next=${nextStationId} pos=(${stationX.toFixed(1)},${stationY.toFixed(1)})`,
 	);
 }
 
