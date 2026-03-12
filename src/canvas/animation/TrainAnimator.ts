@@ -1,13 +1,10 @@
 import type { Container, Graphics } from "pixi.js";
-import { TRAIN_FADEOUT_MS } from "@/constants/mapConfig";
+import { SEGMENT_TRAVEL_MS, TRAIN_FADEOUT_MS } from "@/constants/mapConfig";
 import { useMapStore } from "@/stores/useMapStore";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
 import type { AnimatedTrainState, InterpolatedTrain } from "@/types/train";
 import { drawAnimatedTrains } from "../objects/TrainParticle";
-
-/** 현재역→다음역 이동에 걸리는 기준 시간 (ms) — 50초에 구간 1개 통과 */
-const SEGMENT_TRAVEL_MS = 50_000;
 
 /** ease-in-out 보간: 출발·도착 시 부드럽게 가감속 */
 function easeInOut(t: number): number {
