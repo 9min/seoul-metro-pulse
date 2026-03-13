@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { TrainAnimator } from "@/canvas/animation/TrainAnimator";
 import { handleStationTap } from "@/canvas/interactions/stationClick";
 import { handleTrainTap } from "@/canvas/interactions/trainClick";
-import { flyToRoute, setupZoomPan } from "@/canvas/interactions/zoomPan";
+import { flyToRoute, flyToStation, setupZoomPan } from "@/canvas/interactions/zoomPan";
 import { computeLinkCongestion, drawCongestionHeatmap } from "@/canvas/objects/CongestionHeatmap";
 import { drawLinks, updateLinksAlpha } from "@/canvas/objects/LineLink";
 import { drawRoute, updateRoutePulse } from "@/canvas/objects/RoutePath";
@@ -194,7 +194,23 @@ export function MapCanvas() {
 			);
 			pruneTrails(trailMapRef.current, new Set(trainList.map((t) => t.trainNo)));
 			const currentActiveLines = useMapStore.getState().activeLines;
-			drawTrails(scene.trailLayer, trailGfx, trailMapRef.current, currentActiveLines);
+			const currentRoute = useRouteStore.getState().route;
+			const currentStationMap = useStationStore.getState().stationMap;
+			let currentRouteLines: Set<number> | null = null;
+			if (currentRoute !== null && currentRoute.length > 0) {
+				currentRouteLines = new Set<number>();
+				for (const sid of currentRoute) {
+					const st = currentStationMap.get(sid);
+					if (st !== undefined) currentRouteLines.add(st.line);
+				}
+			}
+			drawTrails(
+				scene.trailLayer,
+				trailGfx,
+				trailMapRef.current,
+				currentActiveLines,
+				currentRouteLines,
+			);
 
 			// 혼잡도 히트맵 (조건부, 30프레임마다)
 			const isHeatmapOn = useMapStore.getState().heatmapEnabled;
@@ -220,9 +236,7 @@ export function MapCanvas() {
 			}
 
 			// 경로 펄스 애니메이션
-			const currentRoute = useRouteStore.getState().route;
 			if (currentRoute !== null && currentRoute.length > 0) {
-				const currentStationMap = useStationStore.getState().stationMap;
 				updateRoutePulse(scene.routeLayer, currentRoute, currentStationMap);
 			}
 
@@ -268,6 +282,17 @@ export function MapCanvas() {
 			updateStationAlpha(scene.stationsLayer, STATIONS, null, activeLines, transferMap);
 		}
 	}, [scene, activeLines, route]);
+
+	// 검색으로 역 선택 시 해당 역이 화면 중앙에 오도록 카메라 이동
+	const flyToTarget = useStationStore((s) => s.flyToTarget);
+	const clearFlyTo = useStationStore((s) => s.clearFlyTo);
+	useEffect(() => {
+		if (scene === null || flyToTarget === null) return;
+		const coord = stationScreenMap.get(flyToTarget.id);
+		if (coord === undefined) return;
+		flyToStation(scene.viewport, coord.x, coord.y);
+		clearFlyTo();
+	}, [scene, flyToTarget, stationScreenMap, clearFlyTo]);
 
 	// 경로 변경 시 routeLayer에 경로 렌더링 + 전체 경로가 보이도록 카메라 이동
 	useEffect(() => {

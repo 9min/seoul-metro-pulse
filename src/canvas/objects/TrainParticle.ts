@@ -112,8 +112,10 @@ function computeTrainAlpha(
 	_selectedStationId: string | null,
 	line: number,
 	activeLines: Set<number>,
+	routeLines: Set<number> | null,
 ): number {
 	if (!activeLines.has(line)) return 0;
+	if (routeLines !== null) return 0;
 	return 1.0;
 }
 
@@ -265,7 +267,11 @@ const trainLabelPool = new Map<string, Text>();
 const TRAIN_LABEL_BASE_SCALE = 1.2;
 
 /** 열차 번호 텍스트를 렌더링한다 */
-function renderTrainLabels(labelsLayer: Container, animatedTrains: AnimatedTrainState[]): void {
+function renderTrainLabels(
+	labelsLayer: Container,
+	animatedTrains: AnimatedTrainState[],
+	routeLines: Set<number> | null,
+): void {
 	const { scale: viewportScale, trainLabelsEnabled } = useMapStore.getState();
 
 	// 비활성 시 풀과 레이어를 비우고 종료
@@ -286,6 +292,13 @@ function renderTrainLabels(labelsLayer: Container, animatedTrains: AnimatedTrain
 
 	for (const train of animatedTrains) {
 		activeTrainNos.add(train.trainNo);
+
+		// 경로 모드에서 모든 열차 레이블 숨김
+		if (routeLines !== null) {
+			const existing = trainLabelPool.get(train.trainNo);
+			if (existing !== undefined) existing.visible = false;
+			continue;
+		}
 
 		// 열차 번호 텍스트: 풀에서 재사용하거나 새로 생성
 		let label = trainLabelPool.get(train.trainNo);
@@ -394,6 +407,7 @@ export function drawAnimatedTrains(
 	onTrainTap: (trainNo: string) => void,
 	activeLines: Set<number> = ALL_LINES,
 	trainLabelsLayer?: Container | null,
+	routeLines: Set<number> | null = null,
 ): void {
 	const now = performance.now();
 
@@ -412,6 +426,7 @@ export function drawAnimatedTrains(
 			selectedStationId,
 			train.line,
 			activeLines,
+			routeLines,
 		);
 		gfx.alpha = applyFadeEffect(gfx, train, baseAlpha, now);
 
@@ -422,7 +437,7 @@ export function drawAnimatedTrains(
 
 	// 열차 번호 레이블 렌더링
 	if (trainLabelsLayer != null) {
-		renderTrainLabels(trainLabelsLayer, animatedTrains);
+		renderTrainLabels(trainLabelsLayer, animatedTrains, routeLines);
 		// 예상 밖 텔레포트 경고 마커: 개발 모드 전용 (API 데이터 품질 디버깅용)
 		if (import.meta.env.DEV) {
 			renderUnexpectedMarkers(trainLabelsLayer, animatedTrains, now);

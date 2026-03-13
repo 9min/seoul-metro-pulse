@@ -20,9 +20,10 @@ const STATIONS = stationsData as Station[];
 /** 검색/경로에서 역 선택 시 카메라 이동을 위한 이벤트 발행 */
 function useStationSelectHandler() {
 	const selectStation = useStationStore((s) => s.selectStation);
+	const requestFlyTo = useStationStore((s) => s.requestFlyTo);
 	return (station: Station) => {
 		selectStation(station);
-		// flyToStation은 MapCanvas 내부에서 selectedStation 변경 감지로 처리
+		requestFlyTo(station);
 	};
 }
 

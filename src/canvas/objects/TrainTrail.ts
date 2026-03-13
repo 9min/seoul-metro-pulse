@@ -48,11 +48,13 @@ export function drawTrails(
 	trailGraphics: Graphics,
 	trailMap: Map<string, TrailQueue>,
 	activeLines: Set<number>,
+	routeLines: Set<number> | null = null,
 ): void {
 	trailGraphics.clear();
 
 	for (const queue of trailMap.values()) {
 		if (!activeLines.has(queue.line)) continue;
+		if (routeLines !== null) continue;
 
 		const colorStr = LINE_COLORS[queue.line];
 		if (colorStr === undefined) continue;
