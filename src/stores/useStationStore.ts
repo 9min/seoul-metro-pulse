@@ -12,10 +12,13 @@ interface StationState {
 	searchQuery: string;
 	searchResults: Station[];
 	isSearchOpen: boolean;
+	flyToTarget: Station | null;
 	initStations: (stations: Station[], links: StationLink[]) => void;
 	selectStation: (station: Station | null) => void;
 	setSearchQuery: (query: string) => void;
 	setSearchOpen: (open: boolean) => void;
+	requestFlyTo: (station: Station) => void;
+	clearFlyTo: () => void;
 }
 
 /** 검색어로 역을 필터링하고 이름 중복을 제거한다 */
@@ -41,6 +44,7 @@ export const useStationStore = create<StationState>((set, get) => ({
 	searchQuery: "",
 	searchResults: [],
 	isSearchOpen: false,
+	flyToTarget: null,
 	initStations: (stations, links) => {
 		const stationMap = new Map<string, Station>();
 		for (const station of stations) {
@@ -60,4 +64,6 @@ export const useStationStore = create<StationState>((set, get) => ({
 			set({ isSearchOpen });
 		}
 	},
+	requestFlyTo: (station) => set({ flyToTarget: station }),
+	clearFlyTo: () => set({ flyToTarget: null }),
 }));
