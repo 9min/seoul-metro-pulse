@@ -1,6 +1,7 @@
 import type { Container, Graphics } from "pixi.js";
 import { SEGMENT_TRAVEL_MS, TRAIN_FADEOUT_MS } from "@/constants/mapConfig";
 import { useMapStore } from "@/stores/useMapStore";
+import { useRouteStore } from "@/stores/useRouteStore";
 import { useStationStore } from "@/stores/useStationStore";
 import { useTrainStore } from "@/stores/useTrainStore";
 import type { AnimatedTrainState, InterpolatedTrain } from "@/types/train";
@@ -282,6 +283,17 @@ export class TrainAnimator {
 		const selectedStation = useStationStore.getState().selectedStation;
 		const activeLines = useMapStore.getState().activeLines;
 
+		const route = useRouteStore.getState().route;
+		const stationMap = useStationStore.getState().stationMap;
+		let routeLines: Set<number> | null = null;
+		if (route !== null && route.length > 0) {
+			routeLines = new Set<number>();
+			for (const stationId of route) {
+				const station = stationMap.get(stationId);
+				if (station !== undefined) routeLines.add(station.line);
+			}
+		}
+
 		drawAnimatedTrains(
 			this.trainsLayer,
 			trainList,
@@ -291,6 +303,7 @@ export class TrainAnimator {
 			this.onTrainTap ?? ((_no: string) => {}),
 			activeLines,
 			this.trainLabelsLayer,
+			routeLines,
 		);
 	}
 
